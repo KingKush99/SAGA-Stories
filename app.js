@@ -1,0 +1,3025 @@
+const storageKey = "chapterforge-project-v1";
+const libraryKey = "chapterforge-library-v1";
+const minAudiobookSeconds = 10 * 60;
+const maxAudiobookSeconds = 3 * 60 * 60;
+const narrationWordsPerMinute = 155;
+
+const sampleManuscript = `Chapter 1: The Locked Library
+NARRATOR: Rain tapped against the glass roof of the old city library as Mara Voss slipped between the stacks.
+MARA VOSS: If the map is real, it has to be behind the astronomy shelves.
+CAPTAIN ROOK: Or behind the guard who is about to ask why we are here after midnight.
+THE ARCHIVIST: The library does not mind visitors. It minds thieves.
+NARRATOR: Mara froze. The voice came from everywhere at once, soft as turning pages.
+MARA VOSS: We are not stealing. We are returning what belongs here.
+THE ARCHIVIST: Then speak the title that opens the door.
+
+Chapter 2: A Voice in the Margins
+NARRATOR: The book in Mara's hand warmed like a cup of tea.
+CAPTAIN ROOK: Books are not supposed to breathe.
+MARA VOSS: Neither are maps, but this one keeps sighing at me.
+THE ARCHIVIST: Every lost story wants to be read by the right voice.
+NARRATOR: The shelves shifted, making a corridor where none had been.
+CAPTAIN ROOK: I hate it when buildings have opinions.`;
+
+const defaultLiveChat = {
+  mystery_chapter: [
+    { author: "Host", text: "Welcome in. We are reading the clue scene and taking voice notes live.", time: "Now" },
+    { author: "Editor", text: "Track slider is synced to the current chapter target.", time: "Now" }
+  ],
+  fantasy_cast: [
+    { author: "Host", text: "Full-cast fantasy table read is open. Pick a role and jump in.", time: "Now" },
+    { author: "Narrator", text: "Listening for clean character separation and emotional pacing.", time: "Now" }
+  ],
+  sleep_story: [
+    { author: "Host", text: "Soft room is live. Keep the chat calm and focused on relaxing narration.", time: "Now" }
+  ],
+  song_lab: [
+    { author: "Host", text: "Drop a language or narration style and we will shape the audiobook draft.", time: "Now" }
+  ],
+  translation_booth: [
+    { author: "Director", text: "Translation booth is checking character names, idioms, and chapter hooks.", time: "Now" }
+  ]
+};
+
+const defaultState = {
+  title: "The Glass Orchard",
+  author: "Avery Stone",
+  genre: "Fantasy",
+  manuscript: sampleManuscript,
+  activeChapterIndex: 0,
+  activeTrackIndex: 0,
+  activeRoomId: "mystery_chapter",
+  enteredRoomId: "",
+  theme: "noir",
+  profileFocusId: "connor",
+  messageTab: "dms",
+  weirdness: 10,
+  styleInfluence: 80,
+  profile: {
+    name: "Connor of the Four Crowns",
+    handle: "@fourcrowns",
+    bio: "Audiobook strategist and book creator.",
+    lastUsernameChange: ""
+  },
+  liveChat: defaultLiveChat,
+  targetDurationSeconds: 30 * 60,
+  narratorCredit: "ChapterForge Ensemble",
+  releaseDate: "",
+  format: "M4B audiobook",
+  price: "19.99",
+  summary: "A character-driven fantasy audiobook about a hidden library, a living map, and the voices needed to unlock a lost city.",
+  channels: ["Audible", "Apple Books", "Spotify", "Direct Store"],
+  voiceMode: "openai",
+  voiceUpgradeVersion: 2,
+  audioQuality: "wav",
+  mastering: "audiobook",
+  targetLanguage: "Spanish",
+  songStyle: "cinematic mystery narration",
+  languageMode: "translate",
+  languageOutput: "",
+  cast: {
+    narrator: {
+      id: "narrator",
+      name: "Narrator",
+      role: "Warm literary narrator",
+      color: "#54b6a6",
+      voiceURI: "",
+      cloudVoice: "marin",
+      rate: 0.92,
+      pitch: 1
+    },
+    mara_voss: {
+      id: "mara_voss",
+      name: "Mara Voss",
+      role: "Curious lead",
+      color: "#d8a94c",
+      voiceURI: "",
+      cloudVoice: "coral",
+      rate: 0.98,
+      pitch: 1.08
+    },
+    captain_rook: {
+      id: "captain_rook",
+      name: "Captain Rook",
+      role: "Dry-humored protector",
+      color: "#b66a43",
+      voiceURI: "",
+      cloudVoice: "onyx",
+      rate: 0.9,
+      pitch: 0.86
+    },
+    the_archivist: {
+      id: "the_archivist",
+      name: "The Archivist",
+      role: "Mysterious keeper",
+      color: "#9e6fa6",
+      voiceURI: "",
+      cloudVoice: "cedar",
+      rate: 0.82,
+      pitch: 0.72
+    }
+  }
+};
+
+const accentColors = ["#54b6a6", "#d8a94c", "#b66a43", "#9e6fa6", "#86a8e7", "#e06c75", "#8ec07c"];
+const hdVoices = ["marin", "cedar", "coral", "onyx", "verse", "alloy", "ash", "ballad", "sage", "shimmer", "nova", "echo", "fable"];
+const liveRooms = [
+  {
+    id: "mystery_chapter",
+    title: "Mystery Chapter Room",
+    host: "Mara Voss",
+    status: "Available",
+    listeners: 128,
+    accent: "#54b6a6",
+    gradient: "linear-gradient(145deg, #111a1d 0%, #33545a 45%, #111112 100%)",
+    description: "Live clue read-through with timed pauses, character marks, and chapter pacing."
+  },
+  {
+    id: "fantasy_cast",
+    title: "Fantasy Cast Room",
+    host: "Ensemble Booth",
+    status: "Available",
+    listeners: 94,
+    accent: "#d8a94c",
+    gradient: "linear-gradient(145deg, #24140f 0%, #8a6540 42%, #15120f 100%)",
+    description: "Side-by-side character auditions for narrator, hero, protector, and keeper voices."
+  },
+  {
+    id: "sleep_story",
+    title: "Sleep Story Live",
+    host: "Quiet Narrator",
+    status: "Live",
+    listeners: 211,
+    accent: "#86a8e7",
+    gradient: "linear-gradient(145deg, #101724 0%, #314767 48%, #0e1118 100%)",
+    description: "Slow audiobook delivery, softer mastering, and calm listener chat."
+  },
+  {
+    id: "song_lab",
+    title: "Book Lab",
+    host: "Draft Room",
+    status: "Available",
+    listeners: 76,
+    accent: "#e06c75",
+    gradient: "linear-gradient(145deg, #211317 0%, #7d3d53 46%, #131113 100%)",
+    description: "Generate narration styles and language variants for your audiobook release."
+  },
+  {
+    id: "translation_booth",
+    title: "Translation Booth",
+    host: "Localization Desk",
+    status: "Live",
+    listeners: 156,
+    accent: "#9e6fa6",
+    gradient: "linear-gradient(145deg, #1a1420 0%, #604970 48%, #111114 100%)",
+    description: "Live translation review for dialogue, idioms, and multilingual narration."
+  }
+];
+const otherSiteTargets = [
+  { name: "Audible", status: "Metadata ready", format: "M4B + ACX notes", accent: "#d8a94c" },
+  { name: "Apple Books", status: "Store package", format: "M4B + cover + pricing", accent: "#54b6a6" },
+  { name: "Spotify", status: "Streaming package", format: "Chapter MP3 + RSS fields", accent: "#8ec07c" },
+  { name: "Google Play", status: "Retail checklist", format: "EPUB companion + audio", accent: "#86a8e7" },
+  { name: "Kobo", status: "Partner export", format: "ONIX metadata + M4B", accent: "#9e6fa6" },
+  { name: "YouTube Music", status: "Audio episodes", format: "Chapter videos + captions", accent: "#e06c75" }
+];
+const themeOptions = [
+  { id: "noir", name: "Noir Grid", accent: "#54b6a6" },
+  { id: "waveform", name: "Waveform", accent: "#d8a94c" },
+  { id: "manuscript", name: "Manuscript", accent: "#86a8e7" },
+  { id: "stage", name: "Stage Lights", accent: "#e06c75" }
+];
+const profilePeople = {
+  connor: {
+    id: "connor",
+    name: "Connor of the Four Crowns",
+    handle: "@fourcrowns",
+    role: "Guest Creator",
+    bio: "Audiobook strategist and book creator.",
+    avatar: "C"
+  },
+  aria: {
+    id: "aria",
+    name: "Aria Vale",
+    handle: "@ariavale",
+    role: "Narration Director",
+    bio: "Builds character casts for serialized audio.",
+    avatar: "AV"
+  },
+  malik: {
+    id: "malik",
+    name: "Malik Stone",
+    handle: "@malikstone",
+    role: "Sound Designer",
+    bio: "Scores chapter openings and live room themes.",
+    avatar: "MS"
+  },
+  june: {
+    id: "june",
+    name: "June Park",
+    handle: "@junepark",
+    role: "Publisher",
+    bio: "Packages audiobooks for retail and direct release.",
+    avatar: "JP"
+  },
+  nico: {
+    id: "nico",
+    name: "Nico Hart",
+    handle: "@nicohart",
+    role: "Live Host",
+    bio: "Runs listener rooms and launch-night readings.",
+    avatar: "NH"
+  }
+};
+const profileNetwork = {
+  posts: ["current_book", "live_room"],
+  followers: ["aria", "malik", "june"],
+  friends: ["aria", "nico"]
+};
+const messageThreads = {
+  requests: [
+    { title: "Book Collab", from: "Aria Vale", preview: "Want to test the opening in Spanish?", unread: 2 },
+    { title: "Retail Review", from: "June Park", preview: "Your chapter package passed the first check.", unread: 1 }
+  ],
+  dms: [
+    { title: "Fantasy Cast Room", from: "Nico Hart", preview: "The room is open for a live take.", unread: 4 },
+    { title: "Mastering Notes", from: "Malik Stone", preview: "Warm narration profile sounds better here.", unread: 0 }
+  ],
+  groups: [
+    { title: "Launch Team", from: "Group chat", preview: "Cover, trailer, and live room are ready.", unread: 6 },
+    { title: "Translation Desk", from: "Group chat", preview: "Localization pass starts after the book demo.", unread: 3 }
+  ]
+};
+
+let state = loadState();
+let library = loadLibrary();
+let voices = [];
+let parsedBook = parseManuscript(state.manuscript);
+let activeQueue = [];
+let activeQueueIndex = 0;
+let activeAudio = null;
+let activeAudioContext = null;
+let songAudioContext = null;
+let songOscillators = [];
+let songGain = null;
+let songProgressTimer = null;
+let songProgressSeconds = 0;
+let activePersonContextId = "";
+let profileHistory = [];
+let liveAudioTimer = null;
+let liveAudioPlaying = false;
+let liveAudioProgressSeconds = 0;
+const songDurationSeconds = 96;
+
+const els = {};
+
+document.addEventListener("DOMContentLoaded", () => {
+  cacheElements();
+  syncOwnProfile();
+  hydrateInputs();
+  bindEvents();
+  applyTheme();
+  refreshVoices();
+  renderAll();
+  setStatus("Ready");
+});
+
+function cacheElements() {
+  els.navButtons = Array.from(document.querySelectorAll(".nav-button"));
+  els.profileButton = document.getElementById("profileButton");
+  els.topProfileButton = document.getElementById("topProfileButton");
+  els.hamburgerButton = document.getElementById("hamburgerButton");
+  els.appMenu = document.getElementById("appMenu");
+  els.openThemesButton = document.getElementById("openThemesButton");
+  els.themeModal = document.getElementById("themeModal");
+  els.closeThemeModalButton = document.getElementById("closeThemeModalButton");
+  els.themePicker = document.getElementById("themePicker");
+  els.projectBanner = document.querySelector(".project-banner");
+  els.stopButton = document.getElementById("stopButton");
+  els.previewButton = document.getElementById("previewButton");
+  els.views = {
+    studio: document.getElementById("studioView"),
+    characters: document.getElementById("charactersView"),
+    search: document.getElementById("searchView"),
+    publish: document.getElementById("publishView"),
+    live: document.getElementById("liveView"),
+    otherSites: document.getElementById("otherSitesView"),
+    profile: document.getElementById("profileView")
+  };
+  els.bookTitle = document.getElementById("bookTitle");
+  els.authorName = document.getElementById("authorName");
+  els.genreSelect = document.getElementById("genreSelect");
+  els.wordCount = document.getElementById("wordCount");
+  els.runtimeEstimate = document.getElementById("runtimeEstimate");
+  els.targetWordCountDisplay = document.getElementById("targetWordCountDisplay");
+  els.scriptRuntimeEstimate = document.getElementById("scriptRuntimeEstimate");
+  els.durationHours = document.getElementById("durationHours");
+  els.durationMinutes = document.getElementById("durationMinutes");
+  els.durationSeconds = document.getElementById("durationSeconds");
+  els.chapterCount = document.getElementById("chapterCount");
+  els.castCount = document.getElementById("castCount");
+  els.manuscriptInput = document.getElementById("manuscriptInput");
+  els.targetLanguageInput = document.getElementById("targetLanguageInput");
+  els.songStyleInput = document.getElementById("songStyleInput");
+  els.languageModeSelect = document.getElementById("languageModeSelect");
+  els.languageOutput = document.getElementById("languageOutput");
+  els.weirdnessRange = document.getElementById("weirdnessRange");
+  els.weirdnessValue = document.getElementById("weirdnessValue");
+  els.styleInfluenceRange = document.getElementById("styleInfluenceRange");
+  els.styleInfluenceValue = document.getElementById("styleInfluenceValue");
+  els.songPlayPauseButton = document.getElementById("songPlayPauseButton");
+  els.songProgress = document.getElementById("songProgress");
+  els.songPlayerTime = document.getElementById("songPlayerTime");
+  els.songPlayerTitle = document.getElementById("songPlayerTitle");
+  els.searchInput = document.getElementById("searchInput");
+  els.searchResults = document.getElementById("searchResults");
+  els.chapterList = document.getElementById("chapterList");
+  els.linePreview = document.getElementById("linePreview");
+  els.activeTakeTitle = document.getElementById("activeTakeTitle");
+  els.castGrid = document.getElementById("castGrid");
+  els.sceneCasting = document.getElementById("sceneCasting");
+  els.voiceModeSelect = document.getElementById("voiceModeSelect");
+  els.ttsApiKey = document.getElementById("ttsApiKey");
+  els.audioQualitySelect = document.getElementById("audioQualitySelect");
+  els.masteringSelect = document.getElementById("masteringSelect");
+  els.voiceInventory = document.getElementById("voiceInventory");
+  els.narratorCredit = document.getElementById("narratorCredit");
+  els.releaseDate = document.getElementById("releaseDate");
+  els.formatSelect = document.getElementById("formatSelect");
+  els.priceInput = document.getElementById("priceInput");
+  els.summaryInput = document.getElementById("summaryInput");
+  els.channelList = document.getElementById("channelList");
+  els.releasePreview = document.getElementById("releasePreview");
+  els.trackPrevButton = document.getElementById("trackPrevButton");
+  els.trackNextButton = document.getElementById("trackNextButton");
+  els.trackSlider = document.getElementById("trackSlider");
+  els.activeTrackTitle = document.getElementById("activeTrackTitle");
+  els.activeTrackMeta = document.getElementById("activeTrackMeta");
+  els.liveRoomGrid = document.getElementById("liveRoomGrid");
+  els.roomStageTitle = document.getElementById("roomStageTitle");
+  els.roomStageMeta = document.getElementById("roomStageMeta");
+  els.roomStagePlayer = document.getElementById("roomStagePlayer");
+  els.roomPresence = document.getElementById("roomPresence");
+  els.leaveRoomButton = document.getElementById("leaveRoomButton");
+  els.liveChatMessages = document.getElementById("liveChatMessages");
+  els.liveChatInput = document.getElementById("liveChatInput");
+  els.sendChatButton = document.getElementById("sendChatButton");
+  els.otherSiteGrid = document.getElementById("otherSiteGrid");
+  els.libraryGrid = document.getElementById("libraryGrid");
+  els.profileBackButton = document.getElementById("profileBackButton");
+  els.profileCloseButton = document.getElementById("profileCloseButton");
+  els.profileEditButton = document.getElementById("profileEditButton");
+  els.profileAvatarLarge = document.getElementById("profileAvatarLarge");
+  els.profileRole = document.getElementById("profileRole");
+  els.profileDisplayName = document.getElementById("profileDisplayName");
+  els.profileHandle = document.getElementById("profileHandle");
+  els.profileBio = document.getElementById("profileBio");
+  els.profileStatsGrid = document.getElementById("profileStatsGrid");
+  els.profileWorkGrid = document.getElementById("profileWorkGrid");
+  els.profileEditModal = document.getElementById("profileEditModal");
+  els.editDisplayName = document.getElementById("editDisplayName");
+  els.editUsername = document.getElementById("editUsername");
+  els.editBio = document.getElementById("editBio");
+  els.saveProfileEditButton = document.getElementById("saveProfileEditButton");
+  els.cancelProfileEditButton = document.getElementById("cancelProfileEditButton");
+  els.personContextMenu = document.getElementById("personContextMenu");
+  els.messagesDrawer = document.getElementById("messagesDrawer");
+  els.messagesHeading = document.getElementById("messagesHeading");
+  els.messageList = document.getElementById("messageList");
+  els.toastNotice = document.getElementById("toastNotice");
+  els.statusBar = document.getElementById("statusBar");
+}
+
+function bindEvents() {
+  els.navButtons.forEach((button) => {
+    button.addEventListener("click", () => switchView(button.dataset.view));
+  });
+  els.profileButton.addEventListener("click", () => openProfile("connor"));
+  els.topProfileButton.addEventListener("click", () => openProfile("connor", { resetHistory: true }));
+  els.hamburgerButton.addEventListener("click", toggleAppMenu);
+  els.openThemesButton.addEventListener("click", openThemeModal);
+  els.closeThemeModalButton.addEventListener("click", closeThemeModal);
+  els.themeModal.addEventListener("click", (event) => {
+    if (event.target === els.themeModal) closeThemeModal();
+  });
+  els.themePicker.addEventListener("click", handleThemeClick);
+  document.getElementById("googleLoginButton").addEventListener("click", () => setStatus("Google login selected"));
+  document.getElementById("settingsButton").addEventListener("click", () => setStatus("Settings opened"));
+  document.getElementById("profileSettingsButton").addEventListener("click", () => setStatus("Profile settings opened"));
+  document.getElementById("syncStatsButton").addEventListener("click", () => setStatus("Cloud stats synced"));
+  els.searchInput.addEventListener("input", renderSearchResults);
+  els.profileBackButton.addEventListener("click", goBackFromProfile);
+  els.profileCloseButton.addEventListener("click", closeProfileToCreate);
+  els.profileEditButton.addEventListener("click", openProfileEditor);
+  els.saveProfileEditButton.addEventListener("click", saveProfileEditor);
+  els.cancelProfileEditButton.addEventListener("click", closeProfileEditor);
+  els.profileEditModal.addEventListener("click", (event) => {
+    if (event.target === els.profileEditModal) closeProfileEditor();
+  });
+  document.getElementById("closeMessagesButton").addEventListener("click", closeMessages);
+  document.querySelectorAll("[data-message-tab]").forEach((button) => {
+    button.addEventListener("click", () => openMessages(button.dataset.messageTab));
+  });
+  els.personContextMenu.addEventListener("click", handlePersonContextAction);
+  document.addEventListener("click", closeFloatingPanels);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAppMenu();
+      closeThemeModal();
+      closeProfileEditor();
+      closeMessages();
+      hidePersonContextMenu();
+    }
+  });
+
+  els.previewButton.addEventListener("click", () => speakCurrentChapter(10));
+  document.getElementById("playSelectionButton").addEventListener("click", () => speakCurrentChapter(8));
+  document.getElementById("auditionCastButton").addEventListener("click", () => speakCurrentChapter(12));
+  els.stopButton.addEventListener("click", stopAllPlayback);
+  document.getElementById("stopInlineButton").addEventListener("click", stopSpeech);
+  document.getElementById("saveProjectButton").addEventListener("click", () => {
+    persistState();
+    setStatus("Project saved");
+  });
+  document.getElementById("translateButton").addEventListener("click", translateManuscript);
+  document.getElementById("songButton").addEventListener("click", handleGenerateBookClick);
+  document.getElementById("openCastButton").addEventListener("click", () => {
+    switchView("characters");
+    setStatus("Voice cast controls opened");
+  });
+  document.getElementById("useGeneratedButton").addEventListener("click", useGeneratedOutput);
+  document.getElementById("playLanguageOutputButton").addEventListener("click", playLanguageOutput);
+  document.getElementById("createTimedBookButton").addEventListener("click", createTimedBook);
+  document.getElementById("detectCharactersButton").addEventListener("click", () => {
+    addMissingCharactersFromScript();
+    renderAll();
+    setStatus("Characters detected from manuscript");
+  });
+  document.getElementById("premiumMatchButton").addEventListener("click", () => {
+    autoAssignVoices();
+    renderAll();
+    setStatus("Studio-grade voices matched to cast");
+  });
+  document.getElementById("addCharacterButton").addEventListener("click", addCharacterFromForm);
+  document.getElementById("publishButton").addEventListener("click", publishAudiobook);
+  document.getElementById("exportPackageButton").addEventListener("click", exportCurrentPackage);
+  document.getElementById("exportOtherSitesButton").addEventListener("click", exportAllOtherSitesPackage);
+  document.getElementById("clearLibraryButton").addEventListener("click", clearLibrary);
+  els.trackPrevButton.addEventListener("click", () => moveActiveTrack(-1));
+  els.trackNextButton.addEventListener("click", () => moveActiveTrack(1));
+  els.trackSlider.addEventListener("input", () => setActiveTrack(Number(els.trackSlider.value), false));
+  els.trackSlider.addEventListener("change", () => setActiveTrack(Number(els.trackSlider.value), true));
+  els.leaveRoomButton.addEventListener("click", leaveLiveRoom);
+  els.sendChatButton.addEventListener("click", sendLiveChat);
+  els.liveChatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      sendLiveChat();
+    }
+  });
+  els.songPlayPauseButton.addEventListener("click", toggleSongPlayback);
+  els.songProgress.addEventListener("input", () => seekSongProgress(Number(els.songProgress.value)));
+  els.weirdnessRange.addEventListener("input", () => handleSongSlider("weirdness"));
+  els.styleInfluenceRange.addEventListener("input", () => handleSongSlider("styleInfluence"));
+  document.querySelectorAll(".suno-tab").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".suno-tab").forEach((tab) => tab.classList.toggle("is-active", tab === button));
+      setStatus(`${button.textContent.trim()} mode selected`);
+    });
+  });
+  document.querySelectorAll(".suno-add-strip button").forEach((button) => {
+    button.addEventListener("click", () => setStatus(`${button.textContent.trim().replace(/\s+/g, " ")} selected`));
+  });
+  document.querySelectorAll(".style-chips button").forEach((button) => {
+    button.addEventListener("click", () => {
+      els.songStyleInput.value = button.textContent.trim();
+      handleInputChange();
+      setStatus(`${button.textContent.trim()} style selected`);
+    });
+  });
+
+  [els.bookTitle, els.authorName, els.genreSelect, els.manuscriptInput, els.targetLanguageInput, els.songStyleInput, els.languageModeSelect, els.languageOutput, els.voiceModeSelect, els.audioQualitySelect, els.masteringSelect, els.narratorCredit, els.releaseDate, els.formatSelect, els.priceInput, els.summaryInput].forEach((input) => {
+    input.addEventListener("input", handleInputChange);
+    input.addEventListener("change", handleInputChange);
+  });
+  [els.durationHours, els.durationMinutes, els.durationSeconds].forEach((input) => {
+    input.addEventListener("input", () => handleDurationInput(false));
+    input.addEventListener("change", () => handleDurationInput(true));
+    input.addEventListener("blur", () => handleDurationInput(true));
+  });
+
+  els.channelList.addEventListener("change", () => {
+    state.channels = selectedChannels();
+    persistState();
+    renderReleasePreview();
+  });
+  els.ttsApiKey.addEventListener("input", () => {
+    sessionStorage.setItem("chapterforge-openai-key", els.ttsApiKey.value.trim());
+    renderVoiceInventory();
+  });
+
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      refreshVoices();
+      renderAll();
+    };
+  }
+}
+
+function hydrateInputs() {
+  els.bookTitle.value = state.title;
+  els.authorName.value = state.author;
+  els.genreSelect.value = state.genre;
+  els.manuscriptInput.value = state.manuscript;
+  hydrateDurationInputs();
+  els.targetLanguageInput.value = state.targetLanguage;
+  els.songStyleInput.value = state.songStyle;
+  els.languageModeSelect.value = normalizeLanguageMode(state.languageMode);
+  els.languageOutput.value = state.languageOutput;
+  els.weirdnessRange.value = String(state.weirdness);
+  els.styleInfluenceRange.value = String(state.styleInfluence);
+  updateSongSliderLabels();
+  els.voiceModeSelect.value = state.voiceMode;
+  els.ttsApiKey.value = sessionStorage.getItem("chapterforge-openai-key") || "";
+  els.audioQualitySelect.value = state.audioQuality;
+  els.masteringSelect.value = state.mastering;
+  els.narratorCredit.value = state.narratorCredit;
+  els.releaseDate.value = state.releaseDate;
+  els.formatSelect.value = state.format;
+  els.priceInput.value = state.price;
+  els.summaryInput.value = state.summary;
+  Array.from(els.channelList.querySelectorAll("input")).forEach((input) => {
+    input.checked = state.channels.includes(input.value);
+  });
+}
+
+function handleInputChange() {
+  state.title = els.bookTitle.value.trim() || "Untitled Audiobook";
+  state.author = els.authorName.value.trim() || "Unknown Author";
+  state.genre = els.genreSelect.value;
+  state.manuscript = els.manuscriptInput.value;
+  state.targetLanguage = els.targetLanguageInput.value.trim() || "English";
+  state.songStyle = els.songStyleInput.value.trim() || "cinematic mystery narration";
+  state.languageMode = normalizeLanguageMode(els.languageModeSelect.value);
+  state.languageOutput = els.languageOutput.value;
+  state.voiceMode = els.voiceModeSelect.value;
+  state.audioQuality = els.audioQualitySelect.value;
+  state.mastering = els.masteringSelect.value;
+  state.narratorCredit = els.narratorCredit.value.trim();
+  state.releaseDate = els.releaseDate.value;
+  state.format = els.formatSelect.value;
+  state.price = els.priceInput.value.trim();
+  state.summary = els.summaryInput.value.trim();
+  parsedBook = parseManuscript(state.manuscript);
+  addMissingCharactersFromScript(false);
+  clampActiveChapter();
+  persistState();
+  renderAll();
+}
+
+function handleDurationInput(normalize) {
+  state.targetDurationSeconds = readDurationInputs(normalize);
+  persistState();
+  renderStats();
+  renderReleasePreview();
+}
+
+function renderAll() {
+  renderThemePicker();
+  renderStats();
+  renderChapters();
+  renderLinePreview();
+  renderCast();
+  renderVoiceInventory();
+  renderSceneCasting();
+  renderReleasePreview();
+  renderSearchResults();
+  renderLiveExperience();
+  renderOtherSites();
+  renderLibrary();
+  renderProfile();
+  renderMessages();
+  renderSongPlayer();
+}
+
+function switchView(viewName) {
+  els.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.view === viewName));
+  if (els.profileButton) {
+    els.profileButton.classList.toggle("is-active", viewName === "profile");
+  }
+  Object.entries(els.views).forEach(([key, view]) => {
+    if (view) view.classList.toggle("is-active", key === viewName);
+  });
+  if (els.projectBanner) {
+    els.projectBanner.hidden = viewName === "profile";
+  }
+  if (els.stopButton && els.previewButton) {
+    const hidePlaybackActions = viewName === "profile";
+    els.stopButton.hidden = hidePlaybackActions;
+    els.previewButton.hidden = hidePlaybackActions;
+  }
+  closeAppMenu();
+  hidePersonContextMenu();
+}
+
+function toggleAppMenu(event) {
+  event.stopPropagation();
+  const nextHidden = !els.appMenu.hidden ? true : false;
+  els.appMenu.hidden = nextHidden;
+  els.hamburgerButton.setAttribute("aria-expanded", String(!nextHidden));
+}
+
+function closeAppMenu() {
+  if (!els.appMenu || els.appMenu.hidden) return;
+  els.appMenu.hidden = true;
+  els.hamburgerButton.setAttribute("aria-expanded", "false");
+}
+
+function openThemeModal() {
+  closeAppMenu();
+  els.themeModal.hidden = false;
+}
+
+function closeThemeModal() {
+  if (els.themeModal) els.themeModal.hidden = true;
+}
+
+function closeFloatingPanels(event) {
+  if (!event) return;
+  const target = event.target;
+  if (els.appMenu && !els.appMenu.hidden && !els.appMenu.contains(target) && target !== els.hamburgerButton && !els.hamburgerButton.contains(target)) {
+    closeAppMenu();
+  }
+  if (els.personContextMenu && !els.personContextMenu.hidden && !els.personContextMenu.contains(target)) {
+    hidePersonContextMenu();
+  }
+}
+
+function handleThemeClick(event) {
+  event.stopPropagation();
+  const button = event.target.closest("[data-theme]");
+  if (!button) return;
+  const nextTheme = button.dataset.theme;
+  if (!themeOptions.some((theme) => theme.id === nextTheme)) return;
+  state.theme = nextTheme;
+  applyTheme();
+  persistState();
+  renderThemePicker();
+  closeThemeModal();
+  setStatus(`${button.textContent} theme selected`);
+}
+
+function applyTheme() {
+  document.body.dataset.theme = state.theme || "noir";
+}
+
+function syncOwnProfile() {
+  const own = state.profile || defaultState.profile;
+  profilePeople.connor.name = own.name || defaultState.profile.name;
+  profilePeople.connor.handle = normalizeHandle(own.handle || defaultState.profile.handle);
+  profilePeople.connor.bio = own.bio || defaultState.profile.bio;
+  profilePeople.connor.avatar = initialsForName(profilePeople.connor.name);
+}
+
+function openProfile(profileId = "connor", options = {}) {
+  const targetId = profilePeople[profileId] ? profileId : "connor";
+  if (options.resetHistory) {
+    profileHistory = [];
+  } else if (els.views.profile.classList.contains("is-active") && state.profileFocusId !== targetId && options.pushHistory !== false) {
+    profileHistory.push(state.profileFocusId);
+  }
+  state.profileFocusId = targetId;
+  syncOwnProfile();
+  persistState();
+  renderProfile();
+  switchView("profile");
+  setStatus(`Viewing ${profilePeople[state.profileFocusId].name}`);
+}
+
+function goBackFromProfile() {
+  if (state.profileFocusId === "connor") {
+    closeProfileToCreate();
+    return;
+  }
+  const previous = profileHistory.pop();
+  if (previous) {
+    openProfile(previous, { pushHistory: false });
+    return;
+  }
+  openProfile("connor", { pushHistory: false });
+}
+
+function closeProfileToCreate() {
+  profileHistory = [];
+  switchView("studio");
+  setStatus("Create opened");
+}
+
+function showPersonContextMenu(event, personId) {
+  event.preventDefault();
+  event.stopPropagation();
+  activePersonContextId = personId;
+  els.personContextMenu.hidden = false;
+  els.personContextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 170)}px`;
+  els.personContextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 130)}px`;
+}
+
+function hidePersonContextMenu() {
+  if (!els.personContextMenu) return;
+  els.personContextMenu.hidden = true;
+  activePersonContextId = "";
+}
+
+function handlePersonContextAction(event) {
+  const button = event.target.closest("[data-person-action]");
+  if (!button || !activePersonContextId) return;
+  const person = profilePeople[activePersonContextId];
+  const action = button.dataset.personAction;
+  hidePersonContextMenu();
+  if (!person) return;
+  if (action === "visit") {
+    openProfile(person.id);
+    return;
+  }
+  if (action === "message") {
+    openMessages("dms");
+    setStatus(`Message thread opened for ${person.name}`);
+    return;
+  }
+  setStatus(`Friend request sent to ${person.name}`);
+}
+
+function openProfileEditor() {
+  if (state.profileFocusId !== "connor") {
+    setStatus("You can only edit your own profile");
+    return;
+  }
+  syncOwnProfile();
+  els.editDisplayName.value = profilePeople.connor.name;
+  els.editUsername.value = profilePeople.connor.handle.replace(/^@/, "");
+  els.editBio.value = profilePeople.connor.bio;
+  els.profileEditModal.hidden = false;
+}
+
+function closeProfileEditor() {
+  if (els.profileEditModal) els.profileEditModal.hidden = true;
+}
+
+function saveProfileEditor() {
+  const name = els.editDisplayName.value.trim();
+  const username = els.editUsername.value.trim();
+  const bio = els.editBio.value.trim();
+  if (!name || !username) {
+    showToast("Display name and username are required.");
+    return;
+  }
+  if (name.length > 64 || username.length > 64 || bio.length > 1000) {
+    showToast("Profile fields are over the allowed length.");
+    return;
+  }
+  if (containsInappropriateInput(`${name} ${username} ${bio}`)) {
+    showToast("You can't use, you can't input inappropriate names.");
+    return;
+  }
+  const nextHandle = normalizeHandle(username);
+  const currentHandle = normalizeHandle(state.profile.handle);
+  if (nextHandle !== currentHandle && !canChangeUsername()) {
+    showToast("Username can only be changed once a week.");
+    return;
+  }
+  state.profile.name = name;
+  state.profile.bio = bio;
+  if (nextHandle !== currentHandle) {
+    state.profile.handle = nextHandle;
+    state.profile.lastUsernameChange = new Date().toISOString();
+  }
+  syncOwnProfile();
+  persistState();
+  closeProfileEditor();
+  renderProfile();
+  showToast("Profile updated.");
+}
+
+function canChangeUsername() {
+  if (!state.profile.lastUsernameChange) return true;
+  const last = new Date(state.profile.lastUsernameChange).getTime();
+  if (!Number.isFinite(last)) return true;
+  return Date.now() - last >= 7 * 24 * 60 * 60 * 1000;
+}
+
+function normalizeHandle(value) {
+  const cleaned = String(value || "")
+    .trim()
+    .replace(/^@+/, "")
+    .replace(/[^a-zA-Z0-9_.-]+/g, "")
+    .slice(0, 64);
+  return `@${cleaned || "creator"}`;
+}
+
+function initialsForName(name) {
+  return String(name || "Creator")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "C";
+}
+
+function containsInappropriateInput(value) {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replaceAll("0", "o")
+    .replaceAll("1", "i")
+    .replaceAll("!", "i")
+    .replaceAll("3", "e")
+    .replaceAll("4", "a")
+    .replaceAll("@", "a")
+    .replaceAll("$", "s")
+    .replace(/[^a-z]/g, "");
+  const blocked = ["bitch", "fuck", "nigger", "nigga", "cunt", "shit", "faggot", "whore", "slut"];
+  return blocked.some((term) => normalized.includes(term));
+}
+
+function showToast(message) {
+  els.toastNotice.textContent = message;
+  els.toastNotice.hidden = false;
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => {
+    els.toastNotice.hidden = true;
+  }, 2800);
+}
+
+function openMessages(tab = "dms") {
+  state.messageTab = messageThreads[tab] ? tab : "dms";
+  persistState();
+  renderMessages();
+  els.messagesDrawer.hidden = false;
+  closeAppMenu();
+  setStatus(`${els.messagesHeading.textContent} opened`);
+}
+
+function closeMessages() {
+  if (els.messagesDrawer) els.messagesDrawer.hidden = true;
+}
+
+function handleSongSlider(field) {
+  if (field === "weirdness") {
+    state.weirdness = Number(els.weirdnessRange.value);
+  } else {
+    state.styleInfluence = Number(els.styleInfluenceRange.value);
+  }
+  updateSongSliderLabels();
+  persistState();
+}
+
+function updateSongSliderLabels() {
+  if (els.weirdnessValue) els.weirdnessValue.textContent = `${state.weirdness}%`;
+  if (els.styleInfluenceValue) els.styleInfluenceValue.textContent = `${state.styleInfluence}%`;
+}
+
+function renderStats() {
+  const words = countWords(state.manuscript);
+  const minutes = estimateMinutes(words);
+  els.wordCount.textContent = formatNumber(words);
+  els.runtimeEstimate.textContent = formatDuration(state.targetDurationSeconds);
+  els.targetWordCountDisplay.textContent = formatNumber(targetWordCount());
+  els.scriptRuntimeEstimate.textContent = `${minutes}m`;
+  els.chapterCount.textContent = String(parsedBook.chapters.length || 1);
+  els.castCount.textContent = String(Object.keys(state.cast).length);
+}
+
+function renderChapters() {
+  els.chapterList.innerHTML = "";
+  const chapters = parsedBook.chapters.length ? parsedBook.chapters : [{ title: "Manuscript", lines: parsedBook.lines }];
+  chapters.forEach((chapter, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `chapter-row${index === state.activeChapterIndex ? " is-active" : ""}`;
+    button.innerHTML = `
+      <span>
+        <strong>${escapeHtml(chapter.title)}</strong>
+        <span class="meta-line">${chapter.lines.length} lines - ${estimateMinutes(countWords(chapter.lines.map((line) => line.text).join(" ")))}m</span>
+      </span>
+      <span class="pill">${index + 1}</span>
+    `;
+    button.addEventListener("click", () => {
+      state.activeChapterIndex = index;
+      persistState();
+      renderChapters();
+      renderLinePreview();
+      renderSceneCasting();
+    });
+    els.chapterList.appendChild(button);
+  });
+}
+
+function renderLinePreview() {
+  const chapter = activeChapter();
+  els.activeTakeTitle.textContent = chapter.title;
+  els.linePreview.innerHTML = "";
+  chapter.lines.slice(0, 14).forEach((line) => {
+    els.linePreview.appendChild(createLineRow(line));
+  });
+}
+
+function renderSceneCasting() {
+  const chapter = activeChapter();
+  els.sceneCasting.innerHTML = "";
+  chapter.lines.slice(0, 22).forEach((line) => {
+    els.sceneCasting.appendChild(createLineRow(line));
+  });
+}
+
+function createLineRow(line) {
+  const cast = getCastForLine(line);
+  const row = document.createElement("div");
+  row.className = "line-row";
+  row.innerHTML = `
+    <span class="speaker-chip" style="background:${cast.color}">${escapeHtml(cast.name)}</span>
+    <p class="line-text">${escapeHtml(line.text)}</p>
+  `;
+  return row;
+}
+
+function renderCast() {
+  els.castGrid.innerHTML = "";
+  Object.values(state.cast).forEach((character, index) => {
+    if (!character.cloudVoice) {
+      character.cloudVoice = defaultHdVoice(character, index);
+    }
+    if ((!character.voiceURI || shouldUpgradeVoice(character.voiceURI)) && voices.length) {
+      character.voiceURI = pickVoice(index, character).voiceURI;
+    }
+    const card = document.createElement("article");
+    card.className = "cast-card";
+    const voice = findVoice(character.voiceURI);
+    const score = voice ? scoreVoice(voice) : 28;
+    const initials = character.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
+    card.innerHTML = `
+      <div class="cast-card-head">
+        <div class="cast-title">
+          <span class="avatar" style="background:${character.color}">${escapeHtml(initials)}</span>
+          <span>
+            <strong>${escapeHtml(character.name)}</strong>
+            <span>${escapeHtml(character.role || "Character voice")}</span>
+          </span>
+        </div>
+        <button class="icon-button" type="button" data-action="test" aria-label="Test ${escapeHtml(character.name)}" title="Test voice">
+          <svg class="ico"><use href="#icon-play"></use></svg>
+        </button>
+      </div>
+      <label>
+        <span>Voice ${voice ? `- ${escapeHtml(voiceDescriptor(voice))}` : ""}</span>
+        <select data-field="voiceURI">${voiceOptions(character.voiceURI)}</select>
+      </label>
+      <label>
+        <span>HD Voice</span>
+        <select data-field="cloudVoice">${hdVoiceOptions(character.cloudVoice)}</select>
+      </label>
+      <div class="quality-row">
+        <div class="quality-meter"><span style="width:${score}%"></span></div>
+        <span>${qualityLabel(score)}</span>
+      </div>
+      <div class="range-grid">
+        <label>
+          <span>Speed ${character.rate.toFixed(2)}</span>
+          <input type="range" min="0.65" max="1.25" step="0.01" value="${character.rate}" data-field="rate">
+        </label>
+        <label>
+          <span>Pitch ${character.pitch.toFixed(2)}</span>
+          <input type="range" min="0.55" max="1.45" step="0.01" value="${character.pitch}" data-field="pitch">
+        </label>
+      </div>
+    `;
+
+    card.querySelector('[data-action="test"]').addEventListener("click", () => {
+      speakText(sampleForCharacter(character), character.id);
+    });
+    card.querySelector('[data-field="voiceURI"]').addEventListener("change", (event) => {
+      character.voiceURI = event.target.value;
+      persistState();
+      renderCast();
+      renderReleasePreview();
+    });
+    card.querySelector('[data-field="cloudVoice"]').addEventListener("change", (event) => {
+      character.cloudVoice = event.target.value;
+      persistState();
+      renderCast();
+      renderReleasePreview();
+    });
+    card.querySelectorAll('input[type="range"]').forEach((range) => {
+      range.addEventListener("input", (event) => {
+        character[event.target.dataset.field] = Number(event.target.value);
+        persistState();
+        renderCast();
+      });
+    });
+    els.castGrid.appendChild(card);
+  });
+  persistState();
+}
+
+function renderVoiceInventory() {
+  if (!els.voiceInventory) return;
+  if (state.voiceMode === "openai") {
+    const keyReady = Boolean(els.ttsApiKey.value.trim());
+    const formatLabel = state.audioQuality === "wav" ? "Ultra HD WAV" : state.audioQuality.toUpperCase();
+    els.voiceInventory.textContent = keyReady
+      ? `OpenAI HD ready: ${formatLabel}, ${titleCase(state.mastering)} mastering, per-character HD voices.`
+      : "OpenAI HD selected. Add a session API key to hear the higher-quality voices; browser voices stay as fallback.";
+    return;
+  }
+  if (!("speechSynthesis" in window)) {
+    els.voiceInventory.textContent = "Speech synthesis is unavailable in this browser.";
+    return;
+  }
+  if (!voices.length) {
+    els.voiceInventory.textContent = "No browser voices found yet. Try refreshing or opening the Cast view again.";
+    return;
+  }
+  const englishCount = voices.filter(isEnglishVoice).length;
+  const neuralCount = voices.filter(isNeuralVoice).length;
+  const studioCount = voices.filter(isStudioVoice).length;
+  const best = voices[0];
+  els.voiceInventory.textContent = `${studioCount} studio / ${neuralCount} neural / ${englishCount} English voices. Best: ${best.name}.`;
+}
+
+function renderReleasePreview() {
+  const words = countWords(state.manuscript);
+  const minutes = estimateMinutes(words);
+  const quality = averageVoiceQuality();
+  const channels = selectedChannels();
+  els.releasePreview.innerHTML = `
+    <dl>
+      <div>
+        <dt>Title</dt>
+        <dd>${escapeHtml(state.title)}</dd>
+      </div>
+      <div>
+        <dt>Author</dt>
+        <dd>${escapeHtml(state.author)}</dd>
+      </div>
+      <div>
+        <dt>Format</dt>
+        <dd>${escapeHtml(state.format)}</dd>
+      </div>
+      <div>
+        <dt>Runtime</dt>
+        <dd>${formatDuration(state.targetDurationSeconds)}</dd>
+      </div>
+      <div>
+        <dt>Script Estimate</dt>
+        <dd>${minutes} minutes</dd>
+      </div>
+      <div>
+        <dt>Voice Quality</dt>
+        <dd>${qualityLabel(quality)} (${quality}%)</dd>
+      </div>
+      <div>
+        <dt>Channels</dt>
+        <dd>${escapeHtml(channels.join(", ") || "Unlisted")}</dd>
+      </div>
+    </dl>
+  `;
+}
+
+function renderLibrary() {
+  els.libraryGrid.innerHTML = "";
+  if (!library.length) {
+    els.libraryGrid.innerHTML = '<div class="empty-state">No published audiobooks yet.</div>';
+    return;
+  }
+  library.forEach((book) => {
+    const card = document.createElement("article");
+    card.className = "library-card";
+    card.innerHTML = `
+      <img src="assets/studio-cover.png" alt="">
+      <div class="library-body">
+        <div>
+          <strong>${escapeHtml(book.title)}</strong>
+          <p class="meta-line">${escapeHtml(book.author)} - ${escapeHtml(book.genre)} - ${book.runtimeMinutes}m</p>
+          <p class="meta-line">${escapeHtml(book.channels.join(", "))}</p>
+        </div>
+        <div class="library-actions">
+          <button class="icon-text-button" type="button" data-action="preview">
+            <svg class="ico"><use href="#icon-play"></use></svg>
+            Preview
+          </button>
+          <button class="icon-text-button" type="button" data-action="download">
+            <svg class="ico"><use href="#icon-download"></use></svg>
+            Metadata
+          </button>
+        </div>
+      </div>
+    `;
+    card.querySelector('[data-action="preview"]').addEventListener("click", () => speakText(book.summary || book.title, "narrator"));
+    card.querySelector('[data-action="download"]').addEventListener("click", () => downloadJson(book, `${slugify(book.title)}-metadata.json`));
+    els.libraryGrid.appendChild(card);
+  });
+}
+
+function renderThemePicker() {
+  if (!els.themePicker) return;
+  els.themePicker.innerHTML = "";
+  themeOptions.forEach((theme) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `theme-swatch${theme.id === state.theme ? " is-active" : ""}`;
+    button.dataset.theme = theme.id;
+    button.style.setProperty("--swatch", theme.accent);
+    button.textContent = theme.name;
+    els.themePicker.appendChild(button);
+  });
+}
+
+function renderSongPlayer() {
+  if (!els.songProgress) return;
+  const isPlaying = Boolean(songProgressTimer);
+  els.songProgress.max = String(songDurationSeconds);
+  els.songProgress.value = String(Math.round(songProgressSeconds));
+  els.songPlayerTime.textContent = formatSongTime(songProgressSeconds);
+  els.songPlayerTitle.textContent = state.languageOutput.trim().split(/\r?\n/)[0] || `${state.title} audiobook`;
+  els.songPlayPauseButton.innerHTML = `
+    <svg class="ico"><use href="#${isPlaying ? "icon-stop" : "icon-play"}"></use></svg>
+    ${isPlaying ? "Pause Book" : "Play Book"}
+  `;
+}
+
+function renderProfile() {
+  if (!els.profileStatsGrid) return;
+  syncOwnProfile();
+  const person = profilePeople[state.profileFocusId] || profilePeople.connor;
+  state.profileFocusId = person.id;
+  els.profileAvatarLarge.textContent = person.avatar;
+  els.profileRole.textContent = person.role;
+  els.profileDisplayName.textContent = person.name;
+  els.profileHandle.textContent = person.handle;
+  els.profileBio.textContent = person.bio;
+  els.profileEditButton.hidden = person.id !== "connor";
+  renderProfileStats();
+  renderProfileWork();
+}
+
+function renderProfileStats() {
+  const labels = [
+    { key: "posts", label: "Posts" },
+    { key: "followers", label: "Followers" },
+    { key: "friends", label: "Friends" }
+  ];
+  els.profileStatsGrid.innerHTML = "";
+  labels.forEach((group) => {
+    const ids = group.key === "posts" ? profileNetwork.posts : (profileNetwork[group.key] || []);
+    const details = document.createElement("details");
+    details.className = "profile-stat-dropdown";
+    details.innerHTML = `
+      <summary>
+        <strong>${ids.length}</strong>
+        <span>${group.label}</span>
+      </summary>
+      <div class="profile-person-list"></div>
+    `;
+    const list = details.querySelector(".profile-person-list");
+    if (group.key === "posts") {
+      profilePosts().forEach((post) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.innerHTML = `
+          <span>${escapeHtml(post.icon)}</span>
+          <strong>${escapeHtml(post.title)}</strong>
+          <small>${escapeHtml(post.meta)}</small>
+        `;
+        button.addEventListener("click", () => setStatus(`${post.title} opened`));
+        list.appendChild(button);
+      });
+      els.profileStatsGrid.appendChild(details);
+      return;
+    }
+    ids.forEach((id) => {
+      const person = profilePeople[id];
+      if (!person) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.personId = person.id;
+      button.innerHTML = `
+        <span>${escapeHtml(person.avatar)}</span>
+        <strong>${escapeHtml(person.name)}</strong>
+        <small>${escapeHtml(person.handle)}</small>
+      `;
+      button.addEventListener("click", () => openProfile(person.id));
+      button.addEventListener("contextmenu", (event) => showPersonContextMenu(event, person.id));
+      list.appendChild(button);
+    });
+    els.profileStatsGrid.appendChild(details);
+  });
+}
+
+function renderProfileWork() {
+  const items = library.length ? library.slice(0, 4) : [
+    currentPackage(),
+    { title: "Midnight Library Sample", author: state.author, genre: "Audiobook", runtime: "0:03:40", voiceQuality: averageVoiceQuality() }
+  ];
+  els.profileWorkGrid.innerHTML = items.map((item) => `
+    <article>
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${escapeHtml(item.genre || "Audiobook")} - ${escapeHtml(item.runtime || formatDuration(state.targetDurationSeconds))}</span>
+    </article>
+  `).join("");
+}
+
+function profilePosts() {
+  return [
+    { icon: "B", title: state.title || "Untitled Audiobook", meta: `${state.genre} draft` },
+    { icon: "L", title: "Live Room Clip", meta: selectedLiveRoom().title }
+  ];
+}
+
+function renderMessages() {
+  if (!els.messageList) return;
+  const tab = messageThreads[state.messageTab] ? state.messageTab : "dms";
+  state.messageTab = tab;
+  const label = tab === "dms" ? "DMs" : tab === "groups" ? "Group Chats" : "Message Requests";
+  els.messagesHeading.textContent = label;
+  document.querySelectorAll(".message-tabs [data-message-tab]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.messageTab === tab);
+  });
+  document.querySelectorAll(".profile-message-columns [data-message-tab]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.messageTab === tab);
+  });
+  els.messageList.innerHTML = messageThreads[tab].map((thread) => `
+    <article class="message-thread">
+      <div>
+        <strong>${escapeHtml(thread.title)}</strong>
+        <span>${escapeHtml(thread.from)}</span>
+      </div>
+      <p>${escapeHtml(thread.preview)}</p>
+      ${thread.unread ? `<b>${thread.unread}</b>` : ""}
+    </article>
+  `).join("");
+}
+
+function renderSearchResults() {
+  if (!els.searchResults) return;
+  const query = (els.searchInput?.value || "").trim().toLowerCase();
+  const release = currentPackage();
+  const items = [
+    {
+      type: "Audiobook",
+      title: state.title || "Untitled Audiobook",
+      meta: `${state.genre} - ${formatDuration(state.targetDurationSeconds)}`,
+      action: "Open",
+      run: () => switchView("studio")
+    },
+    {
+      type: "Live",
+      title: "Book Lab",
+      meta: "Live audiobook room",
+      action: "Enter",
+      run: () => {
+        switchView("live");
+        enterLiveRoom("song_lab");
+      }
+    },
+    {
+      type: "Release",
+      title: release.title,
+      meta: `${release.format} - ${release.runtime}`,
+      action: "Publish",
+      run: () => switchView("publish")
+    },
+    {
+      type: "Shelf",
+      title: "Published Audiobooks",
+      meta: `${library.length || 1} saved release${(library.length || 1) === 1 ? "" : "s"}`,
+      action: "View",
+      run: () => switchView("otherSites")
+    }
+  ].filter((item) => {
+    if (!query) return true;
+    return `${item.type} ${item.title} ${item.meta}`.toLowerCase().includes(query);
+  });
+  els.searchResults.innerHTML = items.length ? "" : `
+    <article class="search-result-card">
+      <span>No matches</span>
+      <strong>Try another search</strong>
+      <small>Audiobooks, rooms, and releases appear here.</small>
+    </article>
+  `;
+  items.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "search-result-card";
+    card.innerHTML = `
+      <span>${escapeHtml(item.type)}</span>
+      <strong>${escapeHtml(item.title)}</strong>
+      <small>${escapeHtml(item.meta)}</small>
+      <button class="icon-text-button" type="button">${escapeHtml(item.action)}</button>
+    `;
+    card.querySelector("button").addEventListener("click", item.run);
+    els.searchResults.appendChild(card);
+  });
+}
+
+function renderLiveExperience() {
+  if (!els.liveRoomGrid) return;
+  els.views.live.classList.toggle("is-room-open", Boolean(state.enteredRoomId));
+  renderTrackSlider();
+  renderLiveRooms();
+  renderRoomStage();
+}
+
+function renderTrackSlider() {
+  const tracks = liveTracks();
+  clampActiveTrack();
+  const active = tracks[state.activeTrackIndex] || tracks[0];
+  els.trackSlider.max = String(Math.max(0, tracks.length - 1));
+  els.trackSlider.value = String(state.activeTrackIndex);
+  els.activeTrackTitle.textContent = `${active.index}. ${active.title}`;
+  els.activeTrackMeta.textContent = `${active.runtime} target - ${active.lines} lines - ${formatNumber(active.words)} words`;
+  els.trackPrevButton.disabled = state.activeTrackIndex <= 0;
+  els.trackNextButton.disabled = state.activeTrackIndex >= tracks.length - 1;
+}
+
+function renderLiveRooms() {
+  const activeTrack = activeLiveTrack();
+  els.liveRoomGrid.innerHTML = "";
+  liveRooms.forEach((room) => {
+    const isActive = room.id === state.activeRoomId;
+    const isEntered = room.id === state.enteredRoomId;
+    const card = document.createElement("article");
+    card.className = `live-room-card${isActive ? " is-active" : ""}${isEntered ? " is-entered" : ""}`;
+    card.style.setProperty("--accent", room.accent);
+    card.style.setProperty("--room-bg", room.gradient);
+    card.innerHTML = `
+      <div class="live-room-overlay"></div>
+      <div class="live-room-head">
+        <span class="room-avatar">${escapeHtml(room.host.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase())}</span>
+        <span>
+          <strong>${escapeHtml(room.host)}</strong>
+          <span><i></i>${escapeHtml(room.status)}</span>
+        </span>
+      </div>
+      <div class="room-art">
+        <span>${escapeHtml(room.title)}</span>
+      </div>
+      <div class="live-room-bottom">
+        <div>
+          <h3>${escapeHtml(room.title)}</h3>
+          <p>${escapeHtml(activeTrack.title)} - ${escapeHtml(room.description)}</p>
+          <span class="meta-line">${room.listeners} listeners</span>
+        </div>
+        <button class="live-enter-button" type="button" aria-label="${isEntered ? "Entered" : "Enter"} ${escapeHtml(room.title)}" title="${isEntered ? "Inside room" : "Enter room"}">
+          <svg class="ico"><use href="#icon-video"></use></svg>
+          <span>${isEntered ? "In" : "Enter"}</span>
+        </button>
+      </div>
+    `;
+    card.querySelector("button").addEventListener("click", () => enterLiveRoom(room.id));
+    els.liveRoomGrid.appendChild(card);
+  });
+}
+
+function renderRoomStage() {
+  const room = selectedLiveRoom();
+  const track = activeLiveTrack();
+  const chat = liveChatForRoom(room.id);
+  const isEntered = state.enteredRoomId === room.id;
+  els.roomStageTitle.textContent = room.title;
+  els.roomStageMeta.textContent = `${isEntered ? "Inside" : room.status} - ${room.listeners} listening`;
+  els.roomPresence.textContent = isEntered
+    ? `${room.title} is playing live.`
+    : `Enter ${room.title} to listen and comment.`;
+  els.leaveRoomButton.hidden = !isEntered;
+  els.liveChatInput.disabled = !isEntered;
+  els.sendChatButton.disabled = !isEntered;
+  els.liveChatInput.placeholder = isEntered ? "Comment in this live room" : "Enter the room to comment";
+  els.roomStagePlayer.style.setProperty("--accent", room.accent);
+  els.roomStagePlayer.style.setProperty("--room-bg", room.gradient);
+  const duration = liveTrackDurationSeconds();
+  const remaining = Math.max(0, duration - liveAudioProgressSeconds);
+  els.roomStagePlayer.innerHTML = isEntered ? `
+    <div class="audible-player">
+      <div class="audible-top-row">
+        <button class="icon-button" id="roomBackButton" type="button" aria-label="Back to rooms" title="Back to rooms">
+          <svg class="ico"><use href="#icon-chevron-left"></use></svg>
+        </button>
+        <button class="icon-button" id="roomMenuButton" type="button" aria-label="Room options" title="Room options">
+          <svg class="ico"><use href="#icon-menu"></use></svg>
+        </button>
+      </div>
+      <div class="audible-heading">
+        <span>Chapter ${track.index}</span>
+        <strong>${escapeHtml(track.title)}</strong>
+      </div>
+      <input id="liveAudioProgress" type="range" min="0" max="${duration}" value="${Math.round(liveAudioProgressSeconds)}" aria-label="Live audiobook progress">
+      <span class="audible-remaining">${formatSongTime(remaining)} remaining</span>
+      <div class="audible-cover">
+        <span>${escapeHtml(room.title.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase())}</span>
+      </div>
+      <div class="audible-controls">
+        <button class="icon-button" id="livePrevTrackButton" type="button" aria-label="Previous chapter" title="Previous chapter">
+          <svg class="ico"><use href="#icon-chevron-left"></use></svg>
+        </button>
+        <button class="audible-skip" id="liveRewindButton" type="button" aria-label="Rewind 30 seconds">30</button>
+        <button class="audible-play" id="livePlayPauseButton" type="button" aria-label="${liveAudioPlaying ? "Pause audiobook" : "Play audiobook"}">
+          <svg class="ico"><use href="#${liveAudioPlaying ? "icon-stop" : "icon-play"}"></use></svg>
+        </button>
+        <button class="audible-skip" id="liveForwardButton" type="button" aria-label="Forward 30 seconds">30</button>
+        <button class="icon-button" id="liveNextTrackButton" type="button" aria-label="Next chapter" title="Next chapter">
+          <svg class="ico"><use href="#icon-chevron-right"></use></svg>
+        </button>
+      </div>
+      <div class="audible-bottom-row">
+        <button type="button" id="liveSpeedButton">1.00X<span>Speed</span></button>
+        <button type="button" id="liveChaptersButton">Chapters<span>List</span></button>
+        <button type="button" id="liveTimerButton">Timer<span>Sleep</span></button>
+        <button type="button" id="liveClipButton">+ Clip<span>Save</span></button>
+      </div>
+    </div>
+  ` : `
+    <div class="room-empty-state">
+      <strong>Select a live room</strong>
+      <span>Each room has its own audiobook player and comments.</span>
+    </div>
+  `;
+  if (isEntered) {
+    els.roomStagePlayer.querySelector("#roomBackButton").addEventListener("click", leaveLiveRoom);
+    els.roomStagePlayer.querySelector("#roomMenuButton").addEventListener("click", () => setStatus("Room options opened"));
+    els.roomStagePlayer.querySelector("#livePlayPauseButton").addEventListener("click", toggleLiveAudiobookPlayback);
+    els.roomStagePlayer.querySelector("#liveRewindButton").addEventListener("click", () => seekLiveAudiobook(-30));
+    els.roomStagePlayer.querySelector("#liveForwardButton").addEventListener("click", () => seekLiveAudiobook(30));
+    els.roomStagePlayer.querySelector("#livePrevTrackButton").addEventListener("click", () => moveActiveTrack(-1));
+    els.roomStagePlayer.querySelector("#liveNextTrackButton").addEventListener("click", () => moveActiveTrack(1));
+    els.roomStagePlayer.querySelector("#liveAudioProgress").addEventListener("input", (event) => setLiveAudiobookProgress(Number(event.target.value)));
+    els.roomStagePlayer.querySelector("#liveSpeedButton").addEventListener("click", () => setStatus("Speed controls opened"));
+    els.roomStagePlayer.querySelector("#liveChaptersButton").addEventListener("click", () => setStatus("Chapter list opened"));
+    els.roomStagePlayer.querySelector("#liveTimerButton").addEventListener("click", () => setStatus("Sleep timer opened"));
+    els.roomStagePlayer.querySelector("#liveClipButton").addEventListener("click", () => setStatus("Clip saved"));
+  }
+  renderLiveChat(chat);
+}
+
+function renderLiveChat(chat = liveChatForRoom(selectedLiveRoom().id)) {
+  els.liveChatMessages.innerHTML = chat.map((message) => `
+    <div class="chat-message${message.author === "You" ? " is-you" : ""}">
+      <strong>${escapeHtml(message.author)}</strong>
+      <p>${escapeHtml(message.text)}</p>
+      <span>${escapeHtml(message.time)}</span>
+    </div>
+  `).join("");
+  els.liveChatMessages.scrollTop = els.liveChatMessages.scrollHeight;
+}
+
+function renderOtherSites() {
+  if (!els.otherSiteGrid) return;
+  const pkg = currentPackage();
+  els.otherSiteGrid.innerHTML = "";
+  otherSiteTargets.forEach((target) => {
+    const card = document.createElement("article");
+    card.className = "other-site-card";
+    card.style.setProperty("--accent", target.accent);
+    card.innerHTML = `
+      <div class="other-site-head">
+        <span class="site-mark">${escapeHtml(target.name.slice(0, 2).toUpperCase())}</span>
+        <span>
+          <strong>${escapeHtml(target.name)}</strong>
+          <span>${escapeHtml(target.status)}</span>
+        </span>
+      </div>
+      <dl>
+        <div>
+          <dt>Format</dt>
+          <dd>${escapeHtml(target.format)}</dd>
+        </div>
+        <div>
+          <dt>Runtime</dt>
+          <dd>${escapeHtml(pkg.runtime)}</dd>
+        </div>
+        <div>
+          <dt>Voice</dt>
+          <dd>${escapeHtml(qualityLabel(pkg.voiceQuality))} (${pkg.voiceQuality}%)</dd>
+        </div>
+      </dl>
+      <button class="icon-text-button" type="button">
+        <svg class="ico"><use href="#icon-upload"></use></svg>
+        Package
+      </button>
+    `;
+    card.querySelector("button").addEventListener("click", () => exportOtherSitePackage(target.name));
+    els.otherSiteGrid.appendChild(card);
+  });
+}
+
+async function createTimedBook() {
+  state.targetDurationSeconds = readDurationInputs();
+  const targetWords = targetWordCount();
+  const chapterCount = recommendedChapterCount(state.targetDurationSeconds);
+  const duration = formatDuration(state.targetDurationSeconds);
+  setStatus(`Creating ${duration} audiobook plan`);
+  const prompt = [
+    `Create an original ${state.genre} audiobook manuscript plan titled "${state.title}" by ${state.author}.`,
+    `Exact target runtime: ${duration}. Target word count: ${targetWords} words at ${narrationWordsPerMinute} words per minute.`,
+    `Create ${chapterCount} chapters with timecoded chapter targets down to the second.`,
+    "Include speaker-labeled sample scenes for Narrator and characters. Keep the structure ready for full-cast audiobook production.",
+    "Return only the manuscript plan and sample opening scenes."
+  ].join("\n");
+  const fallback = buildTimedBookDraft(targetWords, chapterCount);
+  const result = await runTextGeneration(prompt, fallback);
+  state.manuscript = result;
+  els.manuscriptInput.value = result;
+  parsedBook = parseManuscript(state.manuscript);
+  addMissingCharactersFromScript(false);
+  clampActiveChapter();
+  persistState();
+  renderAll();
+  setStatus(`Created ${duration} audiobook target`);
+}
+
+async function handleGenerateBookClick() {
+  syncLanguageState();
+  const mode = normalizeLanguageMode(state.languageMode);
+  if (mode === "translate") {
+    await translateManuscript();
+    return;
+  }
+  if (mode === "both") {
+    await translateManuscript();
+    await generateBookOutput();
+    return;
+  }
+  await generateBookOutput();
+}
+
+async function translateManuscript() {
+  syncLanguageState();
+  const language = state.targetLanguage || "English";
+  setStatus(`Translating audiobook to ${language}`);
+  const prompt = [
+    `Translate this audiobook manuscript into ${language}.`,
+    "Preserve chapter headings, speaker labels, line breaks, pacing, and character names unless a localized name is natural.",
+    "Return only the translated manuscript.",
+    "",
+    state.manuscript
+  ].join("\n");
+  const fallback = buildOfflineTranslation(language);
+  const result = sanitizeGeneratedBookText(await runTextGeneration(prompt, fallback));
+  state.languageOutput = result;
+  els.languageOutput.value = result;
+  persistState();
+  setStatus(`Translation ready in ${language}`);
+}
+
+async function generateBookOutput() {
+  syncLanguageState();
+  const language = state.targetLanguage || "English";
+  const style = state.songStyle || "cinematic mystery narration";
+  setStatus(`Generating ${language} audiobook`);
+  const prompt = [
+    `Create an original audiobook draft in ${language}.`,
+    `Style: ${style}.`,
+    "Include title, chapter beats, narrator direction, character notes, and short production notes.",
+    "Keep it clear, emotionally specific, and suitable for full-cast audiobook production.",
+    "",
+    state.manuscript
+  ].join("\n");
+  const fallback = buildOfflineBook(language, style);
+  const result = sanitizeGeneratedBookText(await runTextGeneration(prompt, fallback));
+  state.languageOutput = result;
+  els.languageOutput.value = result;
+  songProgressSeconds = 0;
+  persistState();
+  renderSongPlayer();
+  setStatus(`${language} audiobook ready`);
+}
+
+function useGeneratedOutput() {
+  const output = els.languageOutput.value.trim();
+  if (!output) {
+    setStatus("No language output to use");
+    return;
+  }
+  state.manuscript = output;
+  els.manuscriptInput.value = output;
+  parsedBook = parseManuscript(state.manuscript);
+  addMissingCharactersFromScript(false);
+  clampActiveChapter();
+  persistState();
+  renderAll();
+  setStatus("Language output moved into manuscript");
+}
+
+function playLanguageOutput() {
+  const output = els.languageOutput.value.trim();
+  if (!output) {
+    setStatus("No language output to play");
+    return;
+  }
+  const cast = state.cast.narrator || defaultState.cast.narrator;
+  const text = output.slice(0, 900);
+  if (shouldUseHdTts()) {
+    speakHdLanguageOutput(text, cast);
+    return;
+  }
+  speakText(text, "narrator");
+}
+
+function toggleSongPlayback() {
+  if (songProgressTimer) {
+    pauseSongPlayback();
+    return;
+  }
+  startSongPlayback();
+}
+
+function startSongPlayback() {
+  stopSpeech(false);
+  if (songProgressSeconds >= songDurationSeconds) {
+    songProgressSeconds = 0;
+  }
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) {
+    setStatus("Audiobook playback is unavailable in this browser");
+    return;
+  }
+  stopSongNodes();
+  songAudioContext = new AudioContextCtor();
+  songGain = songAudioContext.createGain();
+  songGain.gain.value = 0.035;
+  songGain.connect(songAudioContext.destination);
+  const base = 110 + Math.round((state.styleInfluence || 80) * 0.6);
+  const spread = 1 + ((state.weirdness || 10) / 220);
+  const tones = [base, base * 1.5 * spread, base * 2];
+  songOscillators = tones.map((frequency, index) => {
+    const osc = songAudioContext.createOscillator();
+    const gain = songAudioContext.createGain();
+    osc.type = index === 1 ? "triangle" : "sine";
+    osc.frequency.value = frequency;
+    gain.gain.value = index === 0 ? 0.72 : 0.34;
+    osc.connect(gain);
+    gain.connect(songGain);
+    osc.start();
+    return osc;
+  });
+  songProgressTimer = window.setInterval(() => {
+    songProgressSeconds = Math.min(songDurationSeconds, songProgressSeconds + 0.25);
+    renderSongPlayer();
+    if (songProgressSeconds >= songDurationSeconds) {
+      stopSongPlayback(false);
+      setStatus("Audiobook preview complete");
+    }
+  }, 250);
+  renderSongPlayer();
+  setStatus("Audiobook playing");
+}
+
+function pauseSongPlayback() {
+  stopSongNodes();
+  renderSongPlayer();
+  setStatus("Audiobook paused");
+}
+
+function stopSongPlayback(resetProgress = true) {
+  stopSongNodes();
+  if (resetProgress) {
+    songProgressSeconds = 0;
+  }
+  renderSongPlayer();
+}
+
+function stopSongNodes() {
+  if (songProgressTimer) {
+    window.clearInterval(songProgressTimer);
+    songProgressTimer = null;
+  }
+  songOscillators.forEach((osc) => {
+    try {
+      osc.stop();
+    } catch {}
+  });
+  songOscillators = [];
+  if (songAudioContext) {
+    songAudioContext.close().catch(() => {});
+    songAudioContext = null;
+  }
+  songGain = null;
+}
+
+function seekSongProgress(value) {
+  songProgressSeconds = clamp(Number(value) || 0, 0, songDurationSeconds);
+  renderSongPlayer();
+}
+
+function formatSongTime(seconds) {
+  const safe = Math.max(0, Math.round(seconds));
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
+}
+
+function toggleLiveAudiobookPlayback() {
+  if (liveAudioPlaying) {
+    pauseLiveAudiobookPlayback();
+    return;
+  }
+  startLiveAudiobookPlayback();
+}
+
+function startLiveAudiobookPlayback() {
+  if (!state.enteredRoomId) {
+    setStatus("Enter a room first");
+    return;
+  }
+  if (!("speechSynthesis" in window)) {
+    setStatus("Live audiobook playback is unavailable in this browser");
+    return;
+  }
+  stopSongPlayback(false);
+  if (activeQueue.length) {
+    window.speechSynthesis.resume();
+  } else {
+    const lines = liveAudiobookLines();
+    if (!lines.length) {
+      setStatus("No audiobook lines to play");
+      return;
+    }
+    state.activeChapterIndex = Math.min(state.activeTrackIndex, Math.max(0, parsedBook.chapters.length - 1));
+    speakBrowserQueue(lines);
+  }
+  liveAudioPlaying = true;
+  startLiveAudioTimer();
+  renderRoomStage();
+  setStatus(`${selectedLiveRoom().title} audiobook playing`);
+}
+
+function pauseLiveAudiobookPlayback() {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.pause();
+  }
+  liveAudioPlaying = false;
+  stopLiveAudioTimer();
+  renderRoomStage();
+  setStatus("Live audiobook paused");
+}
+
+function stopLiveAudiobookPlayback(resetProgress = false) {
+  liveAudioPlaying = false;
+  stopLiveAudioTimer();
+  if (resetProgress) {
+    liveAudioProgressSeconds = 0;
+  }
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+function startLiveAudioTimer() {
+  stopLiveAudioTimer();
+  liveAudioTimer = window.setInterval(() => {
+    liveAudioProgressSeconds = Math.min(liveTrackDurationSeconds(), liveAudioProgressSeconds + 1);
+    updateLiveAudioProgressUi();
+    if (liveAudioProgressSeconds >= liveTrackDurationSeconds()) {
+      stopLiveAudiobookPlayback(false);
+      setStatus("Live audiobook chapter complete");
+      updateLiveAudioProgressUi();
+    }
+  }, 1000);
+}
+
+function stopLiveAudioTimer() {
+  if (liveAudioTimer) {
+    window.clearInterval(liveAudioTimer);
+    liveAudioTimer = null;
+  }
+}
+
+function seekLiveAudiobook(delta) {
+  setLiveAudiobookProgress(liveAudioProgressSeconds + delta);
+  setStatus(delta < 0 ? "Rewound 30 seconds" : "Skipped ahead 30 seconds");
+}
+
+function setLiveAudiobookProgress(value) {
+  liveAudioProgressSeconds = clamp(Number(value) || 0, 0, liveTrackDurationSeconds());
+  updateLiveAudioProgressUi();
+}
+
+function updateLiveAudioProgressUi() {
+  const duration = liveTrackDurationSeconds();
+  const remaining = Math.max(0, duration - liveAudioProgressSeconds);
+  const progress = document.getElementById("liveAudioProgress");
+  if (progress) {
+    progress.max = String(duration);
+    progress.value = String(Math.round(liveAudioProgressSeconds));
+  }
+  const remainingLabel = els.roomStagePlayer.querySelector(".audible-remaining");
+  if (remainingLabel) {
+    remainingLabel.textContent = `${formatSongTime(remaining)} remaining`;
+  }
+  const playButton = document.getElementById("livePlayPauseButton");
+  if (playButton) {
+    playButton.setAttribute("aria-label", liveAudioPlaying ? "Pause audiobook" : "Play audiobook");
+    playButton.innerHTML = `<svg class="ico"><use href="#${liveAudioPlaying ? "icon-stop" : "icon-play"}"></use></svg>`;
+  }
+}
+
+function liveTrackDurationSeconds() {
+  const track = activeLiveTrack();
+  const parts = String(track.runtime || "0:03:00").split(":").map((part) => Number(part) || 0);
+  return Math.max(60, (parts[0] * 3600) + (parts[1] * 60) + parts[2]);
+}
+
+function liveAudiobookLines() {
+  const chapter = activeChapter();
+  if (chapter.lines.length) return chapter.lines.slice(0, 12);
+  return [{ speakerId: "narrator", speakerName: "Narrator", text: state.manuscript || state.summary || state.title }];
+}
+
+async function speakHdLanguageOutput(text, cast) {
+  stopSpeech(false);
+  let audioUrl = "";
+  try {
+    setStatus("Generating Ultra HD language output");
+    audioUrl = await createHdSpeech(text, {
+      ...cast,
+      role: `premium audiobook narrator, ${state.songStyle || "clear full-cast narration"}`,
+      cloudVoice: cast.cloudVoice || "marin"
+    });
+    await playAudioUrl(audioUrl);
+    setStatus("Language output playback complete");
+  } catch {
+    setStatus("Ultra HD output failed. Using browser fallback.");
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    speakBrowserText(text, "narrator");
+  } finally {
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+  }
+}
+
+function syncLanguageState() {
+  state.targetLanguage = els.targetLanguageInput.value.trim() || "English";
+  state.songStyle = els.songStyleInput.value.trim() || "cinematic mystery narration";
+  state.languageMode = normalizeLanguageMode(els.languageModeSelect.value);
+  state.languageOutput = sanitizeGeneratedBookText(els.languageOutput.value);
+  persistState();
+}
+
+function normalizeLanguageMode(mode) {
+  if (mode === "song" || mode === "book") return "book";
+  if (mode === "both") return "both";
+  return "translate";
+}
+
+function sanitizeGeneratedBookText(text) {
+  const raw = String(text || "");
+  if (!raw) return "";
+  const lines = raw
+    .replace(/\bSong Style:/gi, "Narration Style:")
+    .replace(/\blyrics\b/gi, "manuscript")
+    .replace(/\bSong\b/g, "Audiobook")
+    .replace(/\bsong\b/g, "audiobook")
+    .replace(/Performance notes:/gi, "Production notes:")
+    .split(/\r?\n/);
+  if (lines[0]) {
+    lines[0] = lines[0]
+      .replace(/\s+-\s+(.+?)\s+Narration Style:.*$/i, " - $1 Audiobook Draft")
+      .replace(/\s+-\s+(.+?)\s+Audiobook Style:.*$/i, " - $1 Audiobook Draft")
+      .replace(/\s+-\s+(.+?)\s+Audiobook$/i, " - $1 Audiobook Draft");
+  }
+  return lines.join("\n");
+}
+
+function sanitizeLiveChatMessages(messages) {
+  return (Array.isArray(messages) ? messages : []).map((message) => ({
+    ...message,
+    text: sanitizeLiveRoomCopy(message.text)
+  }));
+}
+
+function sanitizeLiveChatState(chatState) {
+  const sanitized = {};
+  Object.entries(chatState || {}).forEach(([roomId, messages]) => {
+    sanitized[roomId] = sanitizeLiveChatMessages(messages);
+  });
+  return sanitized;
+}
+
+function sanitizeLiveRoomCopy(text) {
+  return String(text || "")
+    .replace(/Song Lab/g, "Book Lab")
+    .replace(/song lab/gi, "book lab")
+    .replace(/song style/gi, "narration style")
+    .replace(/\bsongs\b/gi, "audiobooks")
+    .replace(/\bsong\b/gi, "audiobook");
+}
+
+async function runTextGeneration(prompt, fallback) {
+  const apiKey = els.ttsApiKey.value.trim();
+  if (!apiKey) return fallback;
+  const models = ["gpt-5.5", "gpt-4.1-mini", "gpt-4o-mini"];
+  for (const model of models) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          input: prompt,
+          temperature: 0.7
+        })
+      });
+      if (!response.ok) continue;
+      const data = await response.json();
+      const text = extractResponseText(data);
+      if (text) return text;
+    } catch {
+      break;
+    }
+  }
+  return fallback;
+}
+
+function extractResponseText(data) {
+  if (data.output_text) return data.output_text.trim();
+  const chunks = [];
+  (data.output || []).forEach((item) => {
+    (item.content || []).forEach((part) => {
+      if (part.text) chunks.push(part.text);
+    });
+  });
+  return chunks.join("\n").trim();
+}
+
+function buildOfflineTranslation(language) {
+  return [
+    `Translation draft (${language})`,
+    "",
+    state.manuscript,
+    "",
+    `[${language} localization is ready for AI translation when an HD API key is entered.]`
+  ].join("\n");
+}
+
+function buildOfflineBook(language, style) {
+  const title = state.title || "Untitled";
+  return [
+    `${title} - ${language} Audiobook Draft`,
+    `Style: ${style}`,
+    "",
+    "Chapter 1",
+    "NARRATOR: The opening scene begins with a clear hook and a focused sense of place.",
+    "",
+    "Character Notes",
+    "Lead voice: grounded, emotionally direct, and easy to distinguish from the narrator.",
+    "",
+    "Production Notes",
+    "Keep chapter transitions short, natural, and easy to follow.",
+    "",
+    `[Production notes: Expand this fully into ${language} with the AI generator when an HD API key is entered.]`
+  ].join("\n");
+}
+
+function buildTimedBookDraft(targetWords, chapterCount) {
+  const duration = formatDuration(state.targetDurationSeconds);
+  const chapterSeconds = distributeSeconds(state.targetDurationSeconds, chapterCount);
+  const wordsPerChapter = distributeWords(targetWords, chapterCount);
+  const chapters = chapterSeconds.map((seconds, index) => {
+    const chapterNumber = index + 1;
+    const chapterTitle = timedChapterTitle(chapterNumber);
+    const lines = [
+      `Chapter ${chapterNumber}: ${chapterTitle}`,
+      ...(index === 0 ? [
+        `BOOK TARGET: ${duration}`,
+        `BOOK WORD TARGET: ${formatNumber(targetWords)} words`,
+        `BOOK CHAPTERS: ${chapterCount}`,
+        `PACE: ${narrationWordsPerMinute} words per minute`
+      ] : []),
+      `TARGET: ${formatClock(seconds)} | ${formatNumber(wordsPerChapter[index])} words`,
+      `NARRATOR: This chapter is planned for ${formatClock(seconds)} of finished audio, with pacing calibrated for a ${duration} audiobook.`,
+      `MARA VOSS: We need the story to land exactly on time, not one second loose.`,
+      `CAPTAIN ROOK: Then every scene needs a job, a beat, and a clean exit.`,
+      `THE ARCHIVIST: The final manuscript should expand this outline to ${formatNumber(wordsPerChapter[index])} words before recording.`,
+      ""
+    ];
+    return lines.join("\n");
+  });
+  return chapters.join("\n");
+}
+
+function timedChapterTitle(index) {
+  const titles = [
+    "The Opening Hook",
+    "A Map Begins To Speak",
+    "The First Door",
+    "Voices In The Stacks",
+    "The Price Of The Key",
+    "A City Under Glass",
+    "The Lost Orchard",
+    "The Keeper's Bargain",
+    "Midnight Revisions",
+    "The Final Reading",
+    "What The Library Remembers",
+    "The Door Stays Open"
+  ];
+  return titles[(index - 1) % titles.length];
+}
+
+function parseManuscript(text) {
+  const rawLines = text.split(/\r?\n/);
+  const lines = [];
+  const chapters = [];
+  let currentChapter = { title: "Opening", lines: [] };
+  const speakerPattern = /^([A-Za-z][A-Za-z0-9 .'-]{0,38}):\s*(.+)$/;
+
+  rawLines.forEach((raw) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    if (/^chapter\s+\d+/i.test(trimmed)) {
+      if (currentChapter.lines.length) chapters.push(currentChapter);
+      currentChapter = { title: trimmed, lines: [] };
+      return;
+    }
+    const match = trimmed.match(speakerPattern);
+    const speakerName = match ? titleCase(match[1].trim()) : "Narrator";
+    const speakerId = speakerName.toLowerCase() === "narrator" ? "narrator" : slugify(speakerName);
+    const line = {
+      speakerId,
+      speakerName,
+      text: match ? match[2].trim() : trimmed
+    };
+    lines.push(line);
+    currentChapter.lines.push(line);
+  });
+
+  if (currentChapter.lines.length) chapters.push(currentChapter);
+  if (!chapters.length) chapters.push({ title: "Manuscript", lines });
+  return { lines, chapters };
+}
+
+function addMissingCharactersFromScript(shouldPersist = true) {
+  parsedBook.lines.forEach((line) => {
+    if (!state.cast[line.speakerId]) {
+      const index = Object.keys(state.cast).length;
+      state.cast[line.speakerId] = {
+        id: line.speakerId,
+        name: line.speakerName,
+        role: line.speakerId === "narrator" ? "Narrator" : "Character voice",
+        color: accentColors[index % accentColors.length],
+        voiceURI: voices[index] ? voices[index].voiceURI : "",
+        cloudVoice: defaultHdVoice({ id: line.speakerId, name: line.speakerName }, index),
+        rate: line.speakerId === "narrator" ? 0.92 : 0.96,
+        pitch: 0.9 + ((index % 5) * 0.08)
+      };
+    }
+  });
+  if (shouldPersist) persistState();
+}
+
+function addCharacterFromForm() {
+  const nameInput = document.getElementById("newCharacterName");
+  const roleInput = document.getElementById("newCharacterRole");
+  const name = nameInput.value.trim();
+  if (!name) {
+    setStatus("Add a character name");
+    return;
+  }
+  const id = slugify(name);
+  const index = Object.keys(state.cast).length;
+  state.cast[id] = {
+    id,
+    name,
+    role: roleInput.value.trim() || "Character voice",
+    color: accentColors[index % accentColors.length],
+    voiceURI: voices[index] ? voices[index].voiceURI : "",
+    cloudVoice: defaultHdVoice({ id, name, role: roleInput.value.trim() }, index),
+    rate: 0.96,
+    pitch: 0.95 + ((index % 4) * 0.08)
+  };
+  nameInput.value = "";
+  roleInput.value = "";
+  persistState();
+  renderAll();
+  setStatus(`${name} added to voice cast`);
+}
+
+function refreshVoices() {
+  if (!("speechSynthesis" in window)) {
+    voices = [];
+    setStatus("Speech voices are unavailable in this browser");
+    return;
+  }
+  voices = window.speechSynthesis.getVoices().sort((a, b) => scoreVoice(b) - scoreVoice(a));
+  if (voices.length) {
+    addMissingCharactersFromScript(false);
+    Object.values(state.cast).forEach((character, index) => {
+      if (!character.voiceURI || shouldUpgradeVoice(character.voiceURI)) {
+        character.voiceURI = pickVoice(index, character).voiceURI;
+      }
+    });
+    persistState();
+  }
+}
+
+function autoAssignVoices() {
+  if (!voices.length) {
+    refreshVoices();
+  }
+  Object.values(state.cast).forEach((character, index) => {
+    const voice = pickVoice(index, character);
+    if (voice) character.voiceURI = voice.voiceURI;
+  });
+  persistState();
+}
+
+function pickVoice(index, character = {}) {
+  if (!voices.length) return { voiceURI: "" };
+  const pool = voicePoolForMode();
+  const preferred = pool.filter((voice) => voiceMatchesCharacter(voice, character));
+  const finalPool = preferred.length ? preferred : pool;
+  return finalPool[index % finalPool.length];
+}
+
+function voicePoolForMode() {
+  if (!voices.length) return [];
+  const english = voices.filter(isEnglishVoice);
+  const base = english.length ? english : voices;
+  const studio = base.filter(isStudioVoice);
+  const neural = base.filter(isNeuralVoice);
+  if (state.voiceMode === "neural") {
+    return neural.length ? neural : studio.length ? studio : base;
+  }
+  if (state.voiceMode === "studio") {
+    return studio.length ? studio : neural.length ? neural : base;
+  }
+  return base;
+}
+
+function shouldUpgradeVoice(uri) {
+  if (state.voiceMode === "browser" || !voices.length) return false;
+  const current = findVoice(uri);
+  if (!current) return true;
+  const pool = voicePoolForMode();
+  const best = pool[0];
+  return best ? scoreVoice(best) - scoreVoice(current) >= 14 : false;
+}
+
+function voiceMatchesCharacter(voice, character) {
+  const name = `${voice.name} ${voice.lang}`.toLowerCase();
+  const role = `${character.name || ""} ${character.role || ""}`.toLowerCase();
+  if (role.includes("narrator") || role.includes("literary")) {
+    return name.includes("natural") || name.includes("neural") || name.includes("online") || name.includes("ava") || name.includes("jenny");
+  }
+  if (role.includes("captain") || role.includes("protector") || role.includes("rook")) {
+    return name.includes("guy") || name.includes("brian") || name.includes("andrew") || name.includes("david") || name.includes("male");
+  }
+  if (role.includes("mara") || role.includes("lead") || role.includes("curious")) {
+    return name.includes("aria") || name.includes("ava") || name.includes("jenny") || name.includes("female") || name.includes("zira");
+  }
+  return true;
+}
+
+function isEnglishVoice(voice) {
+  return /^en[-_]/i.test(voice.lang);
+}
+
+function isNeuralVoice(voice) {
+  const name = `${voice.name} ${voice.lang}`.toLowerCase();
+  return voice.localService === false || ["neural", "natural", "premium", "enhanced", "online", "cloud", "multilingual"].some((term) => name.includes(term));
+}
+
+function isStudioVoice(voice) {
+  return scoreVoice(voice) >= 78;
+}
+
+function voiceDescriptor(voice) {
+  if (isStudioVoice(voice)) return "Studio";
+  if (isNeuralVoice(voice)) return "Neural";
+  if (voice.localService === false) return "Cloud";
+  return "Local";
+}
+
+function voiceOptions(selected) {
+  if (!voices.length) {
+    return '<option value="">Default browser voice</option>';
+  }
+  const pool = voicePoolForMode();
+  const remaining = voices.filter((voice) => !pool.includes(voice));
+  const ordered = [...pool, ...remaining];
+  const options = [];
+  ordered.forEach((voice) => {
+    const label = `${voice.name} - ${voice.lang} - ${voiceDescriptor(voice)} - ${qualityLabel(scoreVoice(voice))}`;
+    options.push(`<option value="${escapeHtml(voice.voiceURI)}"${voice.voiceURI === selected ? " selected" : ""}>${escapeHtml(label)}</option>`);
+  });
+  return options.join("");
+}
+
+function hdVoiceOptions(selected) {
+  return hdVoices
+    .map((voice) => `<option value="${voice}"${voice === selected ? " selected" : ""}>${titleCase(voice)} HD</option>`)
+    .join("");
+}
+
+function defaultHdVoice(character, index) {
+  const role = `${character.id || ""} ${character.name || ""} ${character.role || ""}`.toLowerCase();
+  if (role.includes("narrator")) return "marin";
+  if (role.includes("archivist") || role.includes("mysterious")) return "cedar";
+  if (role.includes("captain") || role.includes("rook") || role.includes("protector")) return "onyx";
+  if (role.includes("mara") || role.includes("lead")) return "coral";
+  return hdVoices[index % hdVoices.length];
+}
+
+function scoreVoice(voice) {
+  if (!voice) return 28;
+  const name = `${voice.name} ${voice.lang}`.toLowerCase();
+  let score = 34;
+  if (isEnglishVoice(voice)) score += 16;
+  if (voice.localService === false) score += 18;
+  if (name.includes("natural")) score += 24;
+  if (name.includes("neural")) score += 24;
+  if (name.includes("premium")) score += 20;
+  if (name.includes("enhanced")) score += 18;
+  if (name.includes("online")) score += 14;
+  if (name.includes("cloud")) score += 14;
+  if (name.includes("multilingual")) score += 10;
+  if (name.includes("microsoft")) score += 12;
+  if (name.includes("google")) score += 10;
+  if (name.includes("siri")) score += 8;
+  if (name.includes("desktop")) score -= 16;
+  if (name.includes("compact")) score -= 20;
+  if (name.includes("legacy")) score -= 20;
+  if (name.includes("espeak")) score -= 24;
+  return Math.max(20, Math.min(100, score));
+}
+
+function qualityLabel(score) {
+  if (score >= 86) return "Studio";
+  if (score >= 70) return "Premium";
+  if (score >= 54) return "Clear";
+  return "Standard";
+}
+
+function averageVoiceQuality() {
+  if (state.voiceMode === "openai") return state.audioQuality === "wav" ? 99 : 96;
+  const values = Object.values(state.cast).map((character) => scoreVoice(findVoice(character.voiceURI)));
+  if (!values.length) return 0;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
+function speakCurrentChapter(limit) {
+  const chapter = activeChapter();
+  const lines = chapter.lines.slice(0, limit);
+  if (!lines.length) {
+    setStatus("No manuscript lines to preview");
+    return;
+  }
+  speakQueue(lines);
+}
+
+function speakQueue(lines) {
+  if (shouldUseHdTts()) {
+    speakHdQueue(lines);
+    return;
+  }
+  if (state.voiceMode === "openai") {
+    setStatus("OpenAI HD needs a session API key. Using browser fallback for now.");
+  }
+  speakBrowserQueue(lines);
+}
+
+function speakBrowserQueue(lines) {
+  if (!("speechSynthesis" in window)) {
+    setStatus("Speech playback is unavailable in this browser");
+    return;
+  }
+  stopSpeech(false);
+  activeQueue = lines;
+  activeQueueIndex = 0;
+  setStatus(`Studio preview playing ${activeQueue.length} cast lines`);
+  speakNext();
+}
+
+async function speakHdQueue(lines) {
+  stopSpeech(false);
+  activeQueue = lines;
+  activeQueueIndex = 0;
+  setStatus(`Generating OpenAI HD audio for ${activeQueue.length} cast lines`);
+  while (activeQueueIndex < activeQueue.length && activeQueue.length) {
+    const line = activeQueue[activeQueueIndex];
+    const cast = getCastForLine(line);
+    let audioUrl = "";
+    try {
+      audioUrl = await createHdSpeech(line.text, cast);
+      if (!activeQueue.length) break;
+      await playAudioUrl(audioUrl);
+      activeQueueIndex += 1;
+      await wait(pauseForLine(line.text));
+    } catch (error) {
+      setStatus("HD voice failed. Falling back to browser preview.");
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      speakBrowserQueue(lines.slice(activeQueueIndex));
+      return;
+    }
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+  }
+  activeQueue = [];
+  activeAudio = null;
+  setStatus("OpenAI HD preview complete");
+}
+
+function speakNext() {
+  if (activeQueueIndex >= activeQueue.length) {
+    setStatus("Preview complete");
+    activeQueue = [];
+    return;
+  }
+  const line = activeQueue[activeQueueIndex];
+  const cast = getCastForLine(line);
+  const utterance = new SpeechSynthesisUtterance(line.text);
+  applyCastVoice(utterance, cast);
+  utterance.onend = () => {
+    activeQueueIndex += 1;
+    window.setTimeout(speakNext, pauseForLine(line.text));
+  };
+  utterance.onerror = () => {
+    activeQueueIndex += 1;
+    window.setTimeout(speakNext, 160);
+  };
+  window.speechSynthesis.resume();
+  window.speechSynthesis.speak(utterance);
+}
+
+function speakText(text, castId) {
+  if (shouldUseHdTts()) {
+    speakHdText(text, castId);
+    return;
+  }
+  if (state.voiceMode === "openai") {
+    setStatus("OpenAI HD needs a session API key. Using browser fallback for now.");
+  }
+  speakBrowserText(text, castId);
+}
+
+function speakBrowserText(text, castId) {
+  if (!("speechSynthesis" in window)) {
+    setStatus("Speech playback is unavailable in this browser");
+    return;
+  }
+  stopSpeech(false);
+  const cast = state.cast[castId] || state.cast.narrator;
+  const utterance = new SpeechSynthesisUtterance(text);
+  applyCastVoice(utterance, cast);
+  utterance.onend = () => setStatus("Voice test complete");
+  window.speechSynthesis.resume();
+  window.speechSynthesis.speak(utterance);
+  setStatus(`Testing ${cast.name}`);
+}
+
+async function speakHdText(text, castId) {
+  stopSpeech(false);
+  const cast = state.cast[castId] || state.cast.narrator;
+  let audioUrl = "";
+  try {
+    setStatus(`Generating OpenAI HD voice for ${cast.name}`);
+    audioUrl = await createHdSpeech(text, cast);
+    await playAudioUrl(audioUrl);
+    setStatus("OpenAI HD voice test complete");
+  } catch (error) {
+    setStatus("HD voice failed. Falling back to browser voice.");
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    speakBrowserText(text, castId);
+  } finally {
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+  }
+}
+
+async function createHdSpeech(text, cast) {
+  const apiKey = els.ttsApiKey.value.trim();
+  const response = await fetch("https://api.openai.com/v1/audio/speech", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini-tts",
+      voice: cast.cloudVoice || "marin",
+      input: text.slice(0, 4096),
+      instructions: hdInstructions(cast),
+      response_format: state.audioQuality || "wav"
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`OpenAI speech request failed: ${response.status}`);
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
+function hdInstructions(cast) {
+  const role = `${cast.name || "Narrator"} ${cast.role || ""}`.toLowerCase();
+  const base = "Record as a finished premium audiobook master: broadcast-clean, intimate, natural breath, high emotional fidelity, stable volume, crisp consonants, no robotic cadence, no exaggerated character acting.";
+  if (role.includes("narrator")) {
+    return `${base} Narrator voice: warm literary delivery, elegant pauses, controlled emotion, immersive but restrained.`;
+  }
+  if (role.includes("vocalist") || role.includes("song")) {
+    return `${base} Vocal performance: lyrical, rhythmic, expressive, musical phrasing, clear hooks, tasteful energy, avoid flat robotic reading.`;
+  }
+  if (role.includes("archivist") || role.includes("mysterious")) {
+    return `${base} Character voice: quiet, ancient, mysterious, cinematic, never cartoonish.`;
+  }
+  if (role.includes("captain") || role.includes("protector") || role.includes("rook")) {
+    return `${base} Character voice: grounded, dry, confident, realistic protector energy.`;
+  }
+  return `${base} Character voice: distinct, believable, emotionally specific, clear diction, natural pacing.`;
+}
+
+function playAudioUrl(audioUrl) {
+  return new Promise((resolve, reject) => {
+    activeAudio = new Audio(audioUrl);
+    activeAudio.preload = "auto";
+    if (state.mastering !== "raw") {
+      applyPlaybackMastering(activeAudio);
+    }
+    activeAudio.onended = () => {
+      cleanupAudioContext();
+      resolve();
+    };
+    activeAudio.onerror = () => {
+      cleanupAudioContext();
+      reject(new Error("Audio playback failed"));
+    };
+    activeAudio.play().catch(reject);
+  });
+}
+
+function applyPlaybackMastering(audio) {
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) return;
+  activeAudioContext = new AudioContextCtor();
+  const source = activeAudioContext.createMediaElementSource(audio);
+  const highpass = activeAudioContext.createBiquadFilter();
+  const presence = activeAudioContext.createBiquadFilter();
+  const compressor = activeAudioContext.createDynamicsCompressor();
+  const gain = activeAudioContext.createGain();
+
+  highpass.type = "highpass";
+  highpass.frequency.value = state.mastering === "warm" ? 55 : 70;
+  highpass.Q.value = 0.7;
+
+  presence.type = state.mastering === "warm" ? "lowshelf" : "peaking";
+  presence.frequency.value = state.mastering === "warm" ? 180 : 3200;
+  presence.gain.value = state.mastering === "bright" ? 2.5 : state.mastering === "warm" ? 1.8 : 1.2;
+  presence.Q.value = 0.9;
+
+  compressor.threshold.value = -22;
+  compressor.knee.value = 18;
+  compressor.ratio.value = 2.6;
+  compressor.attack.value = 0.006;
+  compressor.release.value = 0.18;
+
+  gain.gain.value = 1.04;
+  source.connect(highpass);
+  highpass.connect(presence);
+  presence.connect(compressor);
+  compressor.connect(gain);
+  gain.connect(activeAudioContext.destination);
+}
+
+function cleanupAudioContext() {
+  if (activeAudioContext) {
+    activeAudioContext.close().catch(() => {});
+    activeAudioContext = null;
+  }
+}
+
+function shouldUseHdTts() {
+  return state.voiceMode === "openai" && Boolean(els.ttsApiKey.value.trim());
+}
+
+function applyCastVoice(utterance, cast) {
+  const voice = findVoice(cast.voiceURI);
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang;
+  }
+  const rawRate = Number(cast.rate) || 0.95;
+  const rawPitch = Number(cast.pitch) || 1;
+  if (state.voiceMode === "browser") {
+    utterance.rate = clamp(rawRate, 0.7, 1.18);
+    utterance.pitch = clamp(rawPitch, 0.68, 1.32);
+  } else {
+    utterance.rate = clamp(rawRate * 0.94, 0.82, 1.04);
+    utterance.pitch = clamp(1 + ((rawPitch - 1) * 0.55), 0.82, 1.18);
+  }
+  utterance.volume = 1;
+}
+
+function pauseForLine(text) {
+  if (/[!?]$/.test(text)) return 280;
+  if (/[.;:]$/.test(text)) return 230;
+  if (/,/.test(text)) return 180;
+  return 140;
+}
+
+function stopSpeech(showStatus = true) {
+  activeQueue = [];
+  activeQueueIndex = 0;
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio.src = "";
+    activeAudio = null;
+  }
+  if (activeAudioContext) {
+    cleanupAudioContext();
+  }
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+  if (showStatus) setStatus("Playback stopped");
+}
+
+function stopAllPlayback() {
+  stopSpeech(false);
+  stopLiveAudiobookPlayback(true);
+  stopSongPlayback(true);
+  setStatus("Playback stopped");
+}
+
+function publishAudiobook() {
+  const words = countWords(state.manuscript);
+  const book = currentPackage();
+  book.id = `release-${Date.now()}`;
+  book.publishedAt = new Date().toISOString();
+  book.status = "Published";
+  book.wordCount = words;
+  library.unshift(book);
+  saveLibrary();
+  renderLibrary();
+  switchView("otherSites");
+  setStatus(`${book.title} published to the site. Other-site packages are ready.`);
+}
+
+function exportCurrentPackage() {
+  const pkg = currentPackage();
+  downloadJson(pkg, `${slugify(pkg.title)}-audiobook-package.json`);
+  setStatus("Audiobook package exported");
+}
+
+function exportAllOtherSitesPackage() {
+  const pkg = currentPackage();
+  downloadJson({
+    ...pkg,
+    distributionTargets: otherSiteTargets.map((target) => ({
+      site: target.name,
+      status: target.status,
+      format: target.format
+    }))
+  }, `${slugify(pkg.title)}-other-sites-package.json`);
+  setStatus("Other-sites package exported");
+}
+
+function exportOtherSitePackage(siteName) {
+  const pkg = currentPackage();
+  downloadJson({
+    ...pkg,
+    targetSite: siteName,
+    sitePackage: otherSiteTargets.find((target) => target.name === siteName) || null
+  }, `${slugify(pkg.title)}-${slugify(siteName)}-package.json`);
+  setStatus(`${siteName} package prepared`);
+}
+
+function currentPackage() {
+  const words = countWords(state.manuscript);
+  const chapterTargets = distributeSeconds(state.targetDurationSeconds, parsedBook.chapters.length || 1);
+  const chapters = parsedBook.chapters.map((chapter, index) => ({
+    index: index + 1,
+    title: chapter.title,
+    lines: chapter.lines,
+    targetRuntimeSeconds: chapterTargets[index] || 0,
+    targetRuntime: formatClock(chapterTargets[index] || 0),
+    runtimeMinutes: estimateMinutes(countWords(chapter.lines.map((line) => line.text).join(" ")))
+  }));
+  return {
+    title: state.title,
+    author: state.author,
+    genre: state.genre,
+    narratorCredit: state.narratorCredit,
+    releaseDate: state.releaseDate,
+    format: state.format,
+    price: state.price,
+    summary: state.summary,
+    channels: selectedChannels(),
+    runtimeSeconds: state.targetDurationSeconds,
+    runtime: formatDuration(state.targetDurationSeconds),
+    runtimeMinutes: Math.ceil(state.targetDurationSeconds / 60),
+    targetWordCount: targetWordCount(),
+    scriptRuntimeMinutes: estimateMinutes(words),
+    voiceEngine: state.voiceMode,
+    audioQuality: state.audioQuality,
+    mastering: state.mastering,
+    voiceQuality: averageVoiceQuality(),
+    cast: Object.values(state.cast).map((character) => ({
+      name: character.name,
+      role: character.role,
+      voice: findVoice(character.voiceURI)?.name || "No voice selected",
+      voiceTier: findVoice(character.voiceURI) ? voiceDescriptor(findVoice(character.voiceURI)) : "Unavailable",
+      hdVoice: character.cloudVoice || defaultHdVoice(character, 0),
+      rate: character.rate,
+      pitch: character.pitch
+    })),
+    chapters
+  };
+}
+
+function clearLibrary() {
+  if (!library.length) return;
+  const ok = window.confirm("Clear published audiobooks from this browser?");
+  if (!ok) return;
+  library = [];
+  saveLibrary();
+  renderLibrary();
+  setStatus("Library cleared");
+}
+
+function selectedChannels() {
+  return Array.from(els.channelList.querySelectorAll("input:checked")).map((input) => input.value);
+}
+
+function liveTracks() {
+  const chapters = parsedBook.chapters.length ? parsedBook.chapters : [{ title: "Manuscript", lines: parsedBook.lines }];
+  if (chapters.length > 1) {
+    return tracksFromChapters(chapters);
+  }
+  const trackCount = 5;
+  const sourceLines = parsedBook.lines.length ? parsedBook.lines : [{ text: state.manuscript || state.title }];
+  const segmentSize = Math.max(1, Math.ceil(sourceLines.length / trackCount));
+  const targets = distributeSeconds(state.targetDurationSeconds, trackCount);
+  return Array.from({ length: trackCount }, (_, index) => {
+    const segment = sourceLines.slice(index * segmentSize, (index + 1) * segmentSize);
+    const segmentText = segment.length ? segment.map((line) => line.text).join(" ") : state.manuscript;
+    return {
+      index: index + 1,
+      title: fallbackLiveTrackTitle(index),
+      lines: segment.length || sourceLines.length,
+      words: countWords(segmentText),
+      runtime: formatClock(targets[index] || 0)
+    };
+  });
+}
+
+function tracksFromChapters(chapters) {
+  const targets = distributeSeconds(state.targetDurationSeconds, chapters.length || 1);
+  return chapters.map((chapter, index) => {
+    const words = countWords(chapter.lines.map((line) => line.text).join(" "));
+    return {
+      index: index + 1,
+      title: chapter.title,
+      lines: chapter.lines.length,
+      words,
+      runtime: formatClock(targets[index] || 0)
+    };
+  });
+}
+
+function fallbackLiveTrackTitle(index) {
+  const titles = [
+    "Opening Hook Track",
+    "Character Read Track",
+    "Rising Scene Track",
+    "Soundtrack Cue Track",
+    "Final Export Track"
+  ];
+  return titles[index % titles.length];
+}
+
+function clampActiveTrack() {
+  const maxIndex = Math.max(0, liveTracks().length - 1);
+  state.activeTrackIndex = clamp(Math.round(Number(state.activeTrackIndex) || 0), 0, maxIndex);
+}
+
+function activeLiveTrack() {
+  const tracks = liveTracks();
+  clampActiveTrack();
+  return tracks[state.activeTrackIndex] || tracks[0] || { index: 1, title: "Manuscript", lines: 0, words: 0, runtime: "0:00:00" };
+}
+
+function setActiveTrack(index, announce = true) {
+  const tracks = liveTracks();
+  state.activeTrackIndex = clamp(Math.round(Number(index) || 0), 0, Math.max(0, tracks.length - 1));
+  state.activeChapterIndex = state.activeTrackIndex;
+  liveAudioProgressSeconds = 0;
+  if (liveAudioPlaying) {
+    stopLiveAudiobookPlayback(false);
+    window.setTimeout(startLiveAudiobookPlayback, 0);
+  }
+  persistState();
+  renderTrackSlider();
+  renderLiveRooms();
+  renderRoomStage();
+  if (announce) setStatus(`Track ${state.activeTrackIndex + 1} selected`);
+}
+
+function moveActiveTrack(direction) {
+  setActiveTrack(state.activeTrackIndex + direction);
+}
+
+function selectedLiveRoom() {
+  const room = liveRooms.find((candidate) => candidate.id === state.activeRoomId) || liveRooms[0];
+  state.activeRoomId = room.id;
+  return room;
+}
+
+function enterLiveRoom(roomId) {
+  stopLiveAudiobookPlayback(true);
+  state.activeRoomId = liveRooms.some((room) => room.id === roomId) ? roomId : liveRooms[0].id;
+  state.enteredRoomId = state.activeRoomId;
+  const chat = liveChatForRoom(state.activeRoomId);
+  chat.push({
+    author: "System",
+    text: `You entered ${selectedLiveRoom().title}.`,
+    time: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  });
+  if (chat.length > 40) chat.splice(0, chat.length - 40);
+  persistState();
+  renderLiveExperience();
+  startLiveAudiobookPlayback();
+  setStatus(`Entered ${selectedLiveRoom().title}`);
+}
+
+function leaveLiveRoom() {
+  const room = selectedLiveRoom();
+  stopLiveAudiobookPlayback(true);
+  state.enteredRoomId = "";
+  persistState();
+  renderLiveExperience();
+  setStatus(`Left ${room.title}`);
+}
+
+function liveChatForRoom(roomId) {
+  if (!state.liveChat || typeof state.liveChat !== "object") {
+    state.liveChat = clone(defaultLiveChat);
+  }
+  if (!Array.isArray(state.liveChat[roomId])) {
+    state.liveChat[roomId] = clone(defaultLiveChat[roomId] || [
+      { author: "Host", text: "Room is live. Start the audiobook chat.", time: "Now" }
+    ]);
+  }
+  state.liveChat[roomId] = sanitizeLiveChatMessages(state.liveChat[roomId]);
+  return state.liveChat[roomId];
+}
+
+function sendLiveChat() {
+  const text = els.liveChatInput.value.trim();
+  if (!text) {
+    setStatus("Type a chat message first");
+    return;
+  }
+  const room = selectedLiveRoom();
+  if (state.enteredRoomId !== room.id) {
+    setStatus(`Enter ${room.title} before commenting`);
+    renderRoomStage();
+    return;
+  }
+  const chat = liveChatForRoom(room.id);
+  chat.push({
+    author: "You",
+    text,
+    time: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  });
+  if (chat.length > 40) chat.splice(0, chat.length - 40);
+  els.liveChatInput.value = "";
+  persistState();
+  renderLiveChat(chat);
+  setStatus(`Message sent to ${room.title}`);
+}
+
+function activeChapter() {
+  clampActiveChapter();
+  return parsedBook.chapters[state.activeChapterIndex] || parsedBook.chapters[0] || { title: "Manuscript", lines: [] };
+}
+
+function clampActiveChapter() {
+  if (state.activeChapterIndex >= parsedBook.chapters.length) {
+    state.activeChapterIndex = Math.max(0, parsedBook.chapters.length - 1);
+  }
+}
+
+function getCastForLine(line) {
+  return state.cast[line.speakerId] || state.cast.narrator || defaultState.cast.narrator;
+}
+
+function findVoice(uri) {
+  return voices.find((voice) => voice.voiceURI === uri) || null;
+}
+
+function sampleForCharacter(character) {
+  const line = parsedBook.lines.find((candidate) => candidate.speakerId === character.id);
+  if (line) return line.text;
+  if (character.id === "narrator") return "The first chapter opens with a calm, polished narration voice.";
+  return `${character.name} is ready for the next scene.`;
+}
+
+function countWords(text) {
+  const matches = text.match(/\b[\w']+\b/g);
+  return matches ? matches.length : 0;
+}
+
+function estimateMinutes(words) {
+  return Math.max(1, Math.ceil(words / 155));
+}
+
+function hydrateDurationInputs() {
+  const safeSeconds = clampDuration(state.targetDurationSeconds);
+  state.targetDurationSeconds = safeSeconds;
+  const parts = durationParts(safeSeconds);
+  els.durationHours.value = String(parts.hours);
+  els.durationMinutes.value = String(parts.minutes);
+  els.durationSeconds.value = String(parts.seconds);
+}
+
+function readDurationInputs(normalize = true) {
+  const hours = Number.parseInt(els.durationHours.value, 10) || 0;
+  const minutes = Number.parseInt(els.durationMinutes.value, 10) || 0;
+  const seconds = Number.parseInt(els.durationSeconds.value, 10) || 0;
+  const safeSeconds = clampDuration((hours * 3600) + (minutes * 60) + seconds);
+  if (normalize) {
+    const parts = durationParts(safeSeconds);
+    els.durationHours.value = String(parts.hours);
+    els.durationMinutes.value = String(parts.minutes);
+    els.durationSeconds.value = String(parts.seconds);
+  }
+  return safeSeconds;
+}
+
+function clampDuration(seconds) {
+  return Math.round(clamp(Number(seconds) || minAudiobookSeconds, minAudiobookSeconds, maxAudiobookSeconds));
+}
+
+function durationParts(totalSeconds) {
+  const safeSeconds = clampDuration(totalSeconds);
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  return { hours, minutes, seconds };
+}
+
+function formatDuration(totalSeconds) {
+  const parts = durationParts(totalSeconds);
+  const mm = String(parts.minutes).padStart(2, "0");
+  const ss = String(parts.seconds).padStart(2, "0");
+  return `${parts.hours}:${mm}:${ss}`;
+}
+
+function formatClock(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function targetWordCount() {
+  return Math.round((state.targetDurationSeconds / 60) * narrationWordsPerMinute);
+}
+
+function recommendedChapterCount(totalSeconds) {
+  return clamp(Math.round(totalSeconds / (12 * 60)), 1, 15);
+}
+
+function distributeSeconds(totalSeconds, count) {
+  const base = Math.floor(totalSeconds / count);
+  const remainder = totalSeconds % count;
+  return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0));
+}
+
+function distributeWords(totalWords, count) {
+  const base = Math.floor(totalWords / count);
+  const remainder = totalWords % count;
+  return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0));
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function titleCase(value) {
+  return value
+    .toLowerCase()
+    .replace(/\b[a-z]/g, (char) => char.toUpperCase())
+    .replace(/\bMc([a-z])/g, (_, char) => `Mc${char.toUpperCase()}`);
+}
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "item";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function setStatus(message) {
+  els.statusBar.textContent = message;
+}
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    if (!saved) return clone(defaultState);
+    const merged = {
+      ...clone(defaultState),
+      ...saved,
+      cast: {
+        ...clone(defaultState.cast),
+        ...(saved.cast || {})
+      },
+      profile: {
+        ...clone(defaultState.profile),
+        ...(saved.profile || {})
+      },
+      liveChat: {
+        ...clone(defaultState.liveChat),
+        ...(saved.liveChat || {})
+      }
+    };
+    if ((saved.voiceUpgradeVersion || 0) < 2) {
+      merged.voiceMode = "openai";
+      merged.voiceUpgradeVersion = 2;
+    }
+    merged.languageMode = normalizeLanguageMode(merged.languageMode);
+    merged.languageOutput = sanitizeGeneratedBookText(merged.languageOutput);
+    merged.manuscript = sanitizeGeneratedBookText(merged.manuscript);
+    merged.liveChat = sanitizeLiveChatState(merged.liveChat);
+    merged.targetDurationSeconds = clampDuration(merged.targetDurationSeconds || defaultState.targetDurationSeconds);
+    merged.activeTrackIndex = Math.max(0, Math.round(Number(merged.activeTrackIndex) || 0));
+    if (!liveRooms.some((room) => room.id === merged.activeRoomId)) {
+      merged.activeRoomId = defaultState.activeRoomId;
+    }
+    if (merged.enteredRoomId && !liveRooms.some((room) => room.id === merged.enteredRoomId)) {
+      merged.enteredRoomId = "";
+    }
+    if (!themeOptions.some((theme) => theme.id === merged.theme)) {
+      merged.theme = defaultState.theme;
+    }
+    if (!profilePeople[merged.profileFocusId]) {
+      merged.profileFocusId = defaultState.profileFocusId;
+    }
+    if (!messageThreads[merged.messageTab]) {
+      merged.messageTab = defaultState.messageTab;
+    }
+    merged.weirdness = clamp(Number(merged.weirdness) || defaultState.weirdness, 0, 100);
+    merged.styleInfluence = clamp(Number(merged.styleInfluence) || defaultState.styleInfluence, 0, 100);
+    Object.values(merged.cast).forEach((character, index) => {
+      if (!character.cloudVoice) {
+        character.cloudVoice = defaultHdVoice(character, index);
+      }
+    });
+    return merged;
+  } catch {
+    return clone(defaultState);
+  }
+}
+
+function persistState() {
+  localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+function loadLibrary() {
+  try {
+    return JSON.parse(localStorage.getItem(libraryKey)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLibrary() {
+  localStorage.setItem(libraryKey, JSON.stringify(library));
+}
+
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}

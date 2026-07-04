@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ChapterForge Audiobook Studio</title>
+    <link rel="icon" type="image/png" href="assets/studio-cover.png">
+    <link rel="apple-touch-icon" href="assets/studio-cover.png">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <svg aria-hidden="true" class="icon-sprite">
+      <symbol id="icon-book" viewBox="0 0 24 24">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H7a3 3 0 0 0-3 3V5.5Z"></path>
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+      </symbol>
+      <symbol id="icon-mic" viewBox="0 0 24 24">
+        <path d="M12 14a4 4 0 0 0 4-4V7a4 4 0 1 0-8 0v3a4 4 0 0 0 4 4Z"></path>
+        <path d="M5 10a7 7 0 0 0 14 0"></path>
+        <path d="M12 17v4"></path>
+        <path d="M8 21h8"></path>
+      </symbol>
+      <symbol id="icon-users" viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </symbol>
+      <symbol id="icon-user-circle" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"></circle>
+        <circle cx="12" cy="10" r="3"></circle>
+        <path d="M7.5 18.2a5.8 5.8 0 0 1 9 0"></path>
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.5-3.5"></path>
+      </symbol>
+      <symbol id="icon-plus-circle" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 8v8"></path>
+        <path d="M8 12h8"></path>
+      </symbol>
+      <symbol id="icon-play-circle" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="m10 8 6 4-6 4V8Z"></path>
+      </symbol>
+      <symbol id="icon-upload" viewBox="0 0 24 24">
+        <path d="M12 3v12"></path>
+        <path d="m7 8 5-5 5 5"></path>
+        <path d="M5 21h14a2 2 0 0 0 2-2v-4"></path>
+        <path d="M3 15v4a2 2 0 0 0 2 2"></path>
+      </symbol>
+      <symbol id="icon-library" viewBox="0 0 24 24">
+        <path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z"></path>
+        <path d="M8 7h6"></path>
+        <path d="M8 11h8"></path>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="M8 5v14l11-7-11-7Z"></path>
+      </symbol>
+      <symbol id="icon-stop" viewBox="0 0 24 24">
+        <path d="M7 7h10v10H7z"></path>
+      </symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
+        <path d="M17 21v-8H7v8"></path>
+        <path d="M7 3v5h8"></path>
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24">
+        <path d="M12 3v12"></path>
+        <path d="m7 10 5 5 5-5"></path>
+        <path d="M5 21h14"></path>
+      </symbol>
+      <symbol id="icon-wand" viewBox="0 0 24 24">
+        <path d="m5 19 14-14"></path>
+        <path d="m14 5 5 5"></path>
+        <path d="M5 5v4"></path>
+        <path d="M3 7h4"></path>
+        <path d="M19 15v4"></path>
+        <path d="M17 17h4"></path>
+      </symbol>
+      <symbol id="icon-chevron-left" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6"></path>
+      </symbol>
+      <symbol id="icon-chevron-right" viewBox="0 0 24 24">
+        <path d="m9 18 6-6-6-6"></path>
+      </symbol>
+      <symbol id="icon-video" viewBox="0 0 24 24">
+        <path d="M5 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"></path>
+        <path d="m16 11 5-3v8l-5-3"></path>
+      </symbol>
+      <symbol id="icon-menu" viewBox="0 0 24 24">
+        <path d="M4 6h16"></path>
+        <path d="M4 12h16"></path>
+        <path d="M4 18h16"></path>
+      </symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24">
+        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.92 4a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.49a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.47.55.82 1.05.88H21a2 2 0 0 1 0 4h-.55c-.5.06-.91.41-1.05 1.12Z"></path>
+      </symbol>
+      <symbol id="icon-message" viewBox="0 0 24 24">
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"></path>
+      </symbol>
+      <symbol id="icon-pencil" viewBox="0 0 24 24">
+        <path d="M12 20h9"></path>
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"></path>
+      </symbol>
+      <symbol id="icon-x" viewBox="0 0 24 24">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </symbol>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="side-rail" aria-label="Primary navigation">
+        <button class="profile-button" id="profileButton" type="button" aria-label="Profile" title="Profile">
+          <svg class="ico"><use href="#icon-user-circle"></use></svg>
+          <span>Profile</span>
+        </button>
+        <button class="nav-button" data-view="search" type="button" aria-label="Search" title="Search">
+          <svg class="ico"><use href="#icon-search"></use></svg>
+          <span>Search</span>
+        </button>
+        <button class="nav-button nav-create is-active" data-view="studio" type="button" aria-label="Create" title="Create">
+          <svg class="ico"><use href="#icon-plus-circle"></use></svg>
+          <span>Create</span>
+        </button>
+        <button class="nav-button" data-view="live" type="button" aria-label="Live" title="Live">
+          <svg class="ico"><use href="#icon-play-circle"></use></svg>
+          <span>Live</span>
+        </button>
+        <button class="nav-button" data-view="publish" type="button" aria-label="Publish" title="Publish">
+          <svg class="ico"><use href="#icon-upload"></use></svg>
+          <span>Publish</span>
+        </button>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button class="top-profile-button" id="topProfileButton" type="button" aria-label="Open profile" title="Profile">
+              <span>C</span>
+            </button>
+            <div>
+              <p class="eyebrow">ChapterForge Audio</p>
+              <h1>Audiobook Studio</h1>
+            </div>
+          </div>
+          <div class="top-actions">
+            <button class="ghost-button" id="stopButton" type="button">
+              <svg class="ico"><use href="#icon-stop"></use></svg>
+              Stop
+            </button>
+            <button class="primary-button" id="previewButton" type="button">
+              <svg class="ico"><use href="#icon-play"></use></svg>
+              Preview
+            </button>
+            <button class="icon-button" id="hamburgerButton" type="button" aria-label="Open menu" title="Menu" aria-expanded="false">
+              <svg class="ico"><use href="#icon-menu"></use></svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="app-menu" id="appMenu" hidden>
+          <section class="menu-stack">
+            <button class="menu-row" id="openThemesButton" type="button">
+              <svg class="ico"><use href="#icon-wand"></use></svg>
+              Themes
+            </button>
+            <button class="menu-row" id="settingsButton" type="button">
+              <svg class="ico"><use href="#icon-settings"></use></svg>
+              Settings
+            </button>
+          </section>
+          <button class="menu-row google-menu-row" id="googleLoginButton" type="button">Log in with Google</button>
+        </div>
+
+        <div class="modal-backdrop" id="themeModal" hidden>
+          <section class="modal-card theme-modal-card" aria-labelledby="themeModalHeading">
+            <div class="menu-heading">
+              <div>
+                <strong id="themeModalHeading">Themes</strong>
+                <span>Choose a patterned background</span>
+              </div>
+              <button class="icon-button" id="closeThemeModalButton" type="button" aria-label="Close themes" title="Close themes">
+                <svg class="ico"><use href="#icon-x"></use></svg>
+              </button>
+            </div>
+            <div class="theme-picker" id="themePicker"></div>
+          </section>
+        </div>
+
+        <section class="project-banner" aria-label="Current audiobook project">
+          <img src="assets/studio-cover.png" alt="Audiobook production studio with an open book and microphone">
+          <div class="banner-shade"></div>
+          <div class="banner-content">
+            <div class="project-fields">
+              <label>
+                <span>Title</span>
+                <input id="bookTitle" autocomplete="off">
+              </label>
+              <label>
+                <span>Author</span>
+                <input id="authorName" autocomplete="off">
+              </label>
+              <label>
+                <span>Genre</span>
+                <select id="genreSelect">
+                  <option>Fantasy</option>
+                  <option>Mystery</option>
+                  <option>Thriller</option>
+                  <option>Romance</option>
+                  <option>Science Fiction</option>
+                  <option>Memoir</option>
+                  <option>Business</option>
+                  <option>Young Adult</option>
+                </select>
+              </label>
+              <label class="duration-field">
+                <span>Target Length</span>
+                <div class="duration-picker" aria-label="Audiobook target length">
+                  <input id="durationHours" type="number" min="0" max="3" step="1" inputmode="numeric" aria-label="Hours">
+                  <span>h</span>
+                  <input id="durationMinutes" type="number" min="0" max="59" step="1" inputmode="numeric" aria-label="Minutes">
+                  <span>m</span>
+                  <input id="durationSeconds" type="number" min="0" max="59" step="1" inputmode="numeric" aria-label="Seconds">
+                  <span>s</span>
+                </div>
+              </label>
+            </div>
+            <dl class="stat-strip">
+              <div>
+                <dt>Words</dt>
+                <dd id="wordCount">0</dd>
+              </div>
+              <div>
+                <dt>Target</dt>
+                <dd id="runtimeEstimate">0m</dd>
+              </div>
+              <div>
+                <dt>Target Words</dt>
+                <dd id="targetWordCountDisplay">0</dd>
+              </div>
+              <div>
+                <dt>Script Est.</dt>
+                <dd id="scriptRuntimeEstimate">0m</dd>
+              </div>
+              <div>
+                <dt>Chapters</dt>
+                <dd id="chapterCount">0</dd>
+              </div>
+              <div>
+                <dt>Cast</dt>
+                <dd id="castCount">0</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="view is-active" id="studioView" aria-labelledby="studioHeading">
+          <section class="tool-panel language-panel suno-panel">
+            <div class="suno-top">
+              <div class="suno-credit-pill">
+                <svg class="ico"><use href="#icon-mic"></use></svg>
+                Studio
+              </div>
+              <div class="suno-tabs" aria-label="Creation mode">
+                <button class="suno-tab" type="button">Draft</button>
+                <button class="suno-tab is-active" type="button">Voices</button>
+                <button class="suno-tab" type="button">Master</button>
+              </div>
+              <div class="suno-version">Book Mode</div>
+            </div>
+            <div class="suno-add-strip">
+              <button type="button"><span>+</span> Manuscript</button>
+              <button type="button"><span>+</span> Voice <strong>New</strong></button>
+              <button type="button"><span>+</span> Inspiration</button>
+            </div>
+            <div class="suno-grid">
+              <section class="suno-card lyrics-card">
+                <div class="suno-card-head">
+                  <h2>Book Draft</h2>
+                  <div class="suno-icon-row">
+                    <button class="icon-button" id="translateButton" type="button" aria-label="Translate" title="Translate">
+                      <svg class="ico"><use href="#icon-wand"></use></svg>
+                    </button>
+                    <button class="icon-button" id="useGeneratedButton" type="button" aria-label="Use output" title="Use output">
+                      <svg class="ico"><use href="#icon-save"></use></svg>
+                    </button>
+                    <button class="icon-button" id="playLanguageOutputButton" type="button" aria-label="Play voice output" title="Play voice output">
+                      <svg class="ico"><use href="#icon-play"></use></svg>
+                    </button>
+                  </div>
+                </div>
+                <textarea id="languageOutput" spellcheck="true" placeholder="Chapter 1&#10;&#10;Narrator: Open with the strongest scene.&#10;&#10;Character: Keep the pacing clear."></textarea>
+                <div class="suno-card-actions">
+                  <button class="ghost-button" type="button" id="openCastButton">
+                    <svg class="ico"><use href="#icon-users"></use></svg>
+                    Cast
+                  </button>
+                  <button class="primary-button" id="songButton" type="button">
+                    <svg class="ico"><use href="#icon-wand"></use></svg>
+                    Generate Book
+                  </button>
+                </div>
+              </section>
+
+              <section class="suno-card styles-card">
+                <div class="suno-card-head">
+                  <h2>Narration Style</h2>
+                  <button class="icon-button" id="createTimedBookButton" type="button" aria-label="Create book" title="Create book">
+                    <svg class="ico"><use href="#icon-book"></use></svg>
+                  </button>
+                </div>
+                <label>
+                  <span>Style Direction</span>
+                  <input id="songStyleInput" placeholder="cinematic mystery, calm memoir, full-cast fantasy" autocomplete="off">
+                </label>
+                <div class="style-chips">
+                  <button type="button">calm</button>
+                  <button type="button">dramatic</button>
+                  <button type="button">full cast</button>
+                  <button type="button">cinematic</button>
+                </div>
+                <div class="suno-more-options">
+                  <label>
+                    <span>Target Language</span>
+                    <input id="targetLanguageInput" placeholder="Any language" autocomplete="off">
+                  </label>
+                  <label>
+                    <span>Mode</span>
+                    <select id="languageModeSelect">
+                      <option value="translate">Translate audiobook</option>
+                      <option value="book">Generate audiobook</option>
+                      <option value="both">Translate and generate book</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Weirdness <b id="weirdnessValue">10%</b></span>
+                    <input id="weirdnessRange" type="range" min="0" max="100" value="10">
+                  </label>
+                  <label>
+                    <span>Style Influence <b id="styleInfluenceValue">80%</b></span>
+                    <input id="styleInfluenceRange" type="range" min="0" max="100" value="80">
+                  </label>
+                </div>
+              </section>
+            </div>
+            <section class="song-player" aria-label="Audiobook playback">
+              <button class="primary-button" id="songPlayPauseButton" type="button">
+                <svg class="ico"><use href="#icon-play"></use></svg>
+                Play Book
+              </button>
+              <div class="song-player-main">
+                <strong id="songPlayerTitle">Generated audiobook draft</strong>
+                <input id="songProgress" type="range" min="0" max="100" value="0" aria-label="Audiobook progress">
+              </div>
+              <span id="songPlayerTime">0:00</span>
+            </section>
+          </section>
+
+          <div class="view-grid studio-grid">
+            <section class="tool-panel manuscript-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Source</p>
+                  <h2 id="studioHeading">Manuscript</h2>
+                </div>
+                <button class="icon-text-button" id="saveProjectButton" type="button">
+                  <svg class="ico"><use href="#icon-save"></use></svg>
+                  Save
+                </button>
+              </div>
+              <textarea id="manuscriptInput" spellcheck="true"></textarea>
+            </section>
+
+            <section class="tool-panel timeline-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Production</p>
+                  <h2>Chapter Timeline</h2>
+                </div>
+                <button class="icon-button" id="detectCharactersButton" type="button" aria-label="Detect characters" title="Detect characters">
+                  <svg class="ico"><use href="#icon-wand"></use></svg>
+                </button>
+              </div>
+              <div class="chapter-list" id="chapterList"></div>
+              <div class="transport-card">
+                <div>
+                  <p class="small-label">Active Take</p>
+                  <strong id="activeTakeTitle">Opening scene</strong>
+                </div>
+                <div class="transport-buttons">
+                  <button class="icon-text-button" id="playSelectionButton" type="button">
+                    <svg class="ico"><use href="#icon-play"></use></svg>
+                    Scene
+                  </button>
+                  <button class="icon-button" id="stopInlineButton" type="button" aria-label="Stop playback" title="Stop playback">
+                    <svg class="ico"><use href="#icon-stop"></use></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="line-preview" id="linePreview"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="charactersView" aria-labelledby="charactersHeading">
+          <div class="view-grid cast-layout">
+            <section class="tool-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Character Audiobook</p>
+                  <h2 id="charactersHeading">Voice Cast</h2>
+                </div>
+                <button class="icon-text-button" id="premiumMatchButton" type="button">
+                  <svg class="ico"><use href="#icon-wand"></use></svg>
+                  Studio Match
+                </button>
+              </div>
+              <div class="voice-console">
+                <label>
+                  <span>Voice Engine</span>
+                  <select id="voiceModeSelect">
+                    <option value="openai">OpenAI HD</option>
+                    <option value="studio">Studio Neural</option>
+                    <option value="neural">Cloud/Neural Only</option>
+                    <option value="browser">Browser Fallback</option>
+                  </select>
+                </label>
+                <label>
+                  <span>HD API Key</span>
+                  <input id="ttsApiKey" type="password" placeholder="Only stored for this session" autocomplete="off">
+                </label>
+                <label>
+                  <span>Audio Quality</span>
+                  <select id="audioQualitySelect">
+                    <option value="wav">Ultra HD WAV</option>
+                    <option value="mp3">HD MP3</option>
+                    <option value="opus">Streaming Opus</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Mastering</span>
+                  <select id="masteringSelect">
+                    <option value="audiobook">Audiobook Master</option>
+                    <option value="warm">Warm Narration</option>
+                    <option value="bright">Bright Dialogue</option>
+                    <option value="raw">Raw</option>
+                  </select>
+                </label>
+                <div class="voice-inventory" id="voiceInventory">Scanning voices...</div>
+              </div>
+              <div class="add-character-row">
+                <label>
+                  <span>Name</span>
+                  <input id="newCharacterName" placeholder="Character name" autocomplete="off">
+                </label>
+                <label>
+                  <span>Role</span>
+                  <input id="newCharacterRole" placeholder="Role" autocomplete="off">
+                </label>
+                <button class="primary-button" id="addCharacterButton" type="button">Add</button>
+              </div>
+              <div class="cast-grid" id="castGrid"></div>
+            </section>
+
+            <section class="tool-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Dialogue</p>
+                  <h2>Scene Casting</h2>
+                </div>
+                <button class="icon-text-button" id="auditionCastButton" type="button">
+                  <svg class="ico"><use href="#icon-mic"></use></svg>
+                  Audition
+                </button>
+              </div>
+              <div class="scene-casting" id="sceneCasting"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="searchView" aria-labelledby="searchHeading">
+          <div class="search-page">
+            <section class="tool-panel search-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Discover</p>
+                  <h2 id="searchHeading">Search</h2>
+                </div>
+              </div>
+              <label class="search-field">
+                <span>Find audiobooks, rooms, and releases</span>
+                <input id="searchInput" placeholder="Search SAGA Stories" autocomplete="off">
+              </label>
+              <div class="search-results" id="searchResults"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="liveView" aria-labelledby="liveHeading">
+          <div class="view-grid live-layout">
+            <section class="tool-panel live-browser-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Live Streams</p>
+                  <h2 id="liveHeading">Audiobook Rooms</h2>
+                </div>
+                <div class="track-stepper">
+                  <button class="icon-button" id="trackPrevButton" type="button" aria-label="Previous track" title="Previous track">
+                    <svg class="ico"><use href="#icon-chevron-left"></use></svg>
+                  </button>
+                  <button class="icon-button" id="trackNextButton" type="button" aria-label="Next track" title="Next track">
+                    <svg class="ico"><use href="#icon-chevron-right"></use></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="track-slider-card">
+                <div>
+                  <p class="small-label">Track Slider</p>
+                  <strong id="activeTrackTitle">Track 1</strong>
+                  <span id="activeTrackMeta">0:00:00 target</span>
+                </div>
+                <input id="trackSlider" type="range" min="0" max="0" step="1" value="0" aria-label="Live track selector">
+              </div>
+              <div class="live-room-grid" id="liveRoomGrid"></div>
+            </section>
+
+            <section class="tool-panel room-stage-panel" aria-labelledby="roomStageTitle">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Entered Room</p>
+                  <h2 id="roomStageTitle">Select a room</h2>
+                </div>
+                <div class="stage-actions">
+                  <span class="live-badge" id="roomStageMeta">Live chat ready</span>
+                  <button class="ghost-button" id="leaveRoomButton" type="button">Back to Rooms</button>
+                </div>
+              </div>
+              <div class="room-presence" id="roomPresence">Choose a live room to enter.</div>
+              <div class="room-stage-player" id="roomStagePlayer"></div>
+              <div class="chat-shell">
+                <div class="chat-messages" id="liveChatMessages" aria-live="polite"></div>
+                <div class="chat-compose">
+                  <input id="liveChatInput" placeholder="Message this live room" autocomplete="off">
+                  <button class="primary-button" id="sendChatButton" type="button">Send</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="publishView" aria-labelledby="publishHeading">
+          <div class="view-grid publish-grid">
+            <section class="tool-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Release</p>
+                  <h2 id="publishHeading">Publish Audiobook</h2>
+                </div>
+                <button class="primary-button" id="publishButton" type="button">
+                  <svg class="ico"><use href="#icon-upload"></use></svg>
+                  Publish
+                </button>
+              </div>
+              <div class="publish-form">
+                <label>
+                  <span>Narrator Credit</span>
+                  <input id="narratorCredit" autocomplete="off">
+                </label>
+                <label>
+                  <span>Release Date</span>
+                  <input id="releaseDate" type="date">
+                </label>
+                <label>
+                  <span>Format</span>
+                  <select id="formatSelect">
+                    <option>M4B audiobook</option>
+                    <option>MP3 chapter files</option>
+                    <option>Direct streaming package</option>
+                  </select>
+                </label>
+                <label>
+                  <span>List Price</span>
+                  <input id="priceInput" inputmode="decimal" autocomplete="off">
+                </label>
+                <label class="full-span">
+                  <span>Summary</span>
+                  <textarea id="summaryInput"></textarea>
+                </label>
+              </div>
+            </section>
+
+            <section class="tool-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Distribution</p>
+                  <h2>Channels</h2>
+                </div>
+                <button class="icon-text-button" id="exportPackageButton" type="button">
+                  <svg class="ico"><use href="#icon-download"></use></svg>
+                  Export
+                </button>
+              </div>
+              <div class="channel-list" id="channelList">
+                <label><input type="checkbox" value="Audible" checked> Audible</label>
+                <label><input type="checkbox" value="Apple Books" checked> Apple Books</label>
+                <label><input type="checkbox" value="Spotify" checked> Spotify</label>
+                <label><input type="checkbox" value="Google Play"> Google Play</label>
+                <label><input type="checkbox" value="Direct Store" checked> Direct Store</label>
+              </div>
+              <div class="release-preview" id="releasePreview"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="otherSitesView" aria-labelledby="otherSitesHeading">
+          <div class="view-grid other-sites-layout">
+            <section class="tool-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Distribution</p>
+                  <h2 id="otherSitesHeading">Publish To Other Sites</h2>
+                </div>
+                <button class="icon-text-button" id="exportOtherSitesButton" type="button">
+                  <svg class="ico"><use href="#icon-download"></use></svg>
+                  Export
+                </button>
+              </div>
+              <div class="other-site-grid" id="otherSiteGrid"></div>
+            </section>
+
+            <section class="tool-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Shelf</p>
+                <h2 id="libraryHeading">Published Audiobooks</h2>
+              </div>
+              <button class="ghost-button" id="clearLibraryButton" type="button">Clear</button>
+            </div>
+            <div class="library-grid" id="libraryGrid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="profileView" aria-labelledby="profileHeading">
+          <div class="profile-page">
+            <div class="profile-hero">
+              <button class="ghost-button" id="profileBackButton" type="button">Back</button>
+              <div>
+                <p class="eyebrow">Profile</p>
+                <h2 id="profileHeading">Creator Record</h2>
+              </div>
+              <button class="icon-button profile-close-button" id="profileCloseButton" type="button" aria-label="Close profile" title="Close profile">
+                <svg class="ico"><use href="#icon-x"></use></svg>
+              </button>
+            </div>
+            <section class="profile-record-card">
+              <div class="profile-record-main">
+                <div class="profile-emblem-wrap">
+                  <span class="profile-emblem" id="profileAvatarLarge">C</span>
+                  <button class="profile-edit-avatar" id="profileEditButton" type="button" aria-label="Edit profile" title="Edit profile">
+                    <svg class="ico"><use href="#icon-pencil"></use></svg>
+                  </button>
+                </div>
+                <div>
+                  <p id="profileRole">Guest Creator</p>
+                  <h3 id="profileDisplayName">Connor of the Four Crowns</h3>
+                  <strong id="profileHandle">@fourcrowns</strong>
+                  <span id="profileBio">Audiobook strategist and book creator.</span>
+                </div>
+              </div>
+              <div class="profile-record-actions">
+                <button class="icon-button" id="profileSettingsButton" type="button" aria-label="Profile settings" title="Profile settings">
+                  <svg class="ico"><use href="#icon-settings"></use></svg>
+                </button>
+                <button class="ghost-button" id="syncStatsButton" type="button">Sync Cloud Stats</button>
+              </div>
+            </section>
+            <div class="profile-stats-grid" id="profileStatsGrid"></div>
+            <section class="profile-section">
+              <h3>Published Work</h3>
+              <div class="profile-work-grid" id="profileWorkGrid"></div>
+            </section>
+            <section class="profile-section">
+              <h3>Achievements</h3>
+              <div class="achievement-grid">
+                <article><strong>Unlocked: First Release</strong><span>Publish one audiobook.</span></article>
+                <article><strong>Locked: Live Host</strong><span>Enter and host a live reading.</span></article>
+                <article><strong>Locked: Book Builder</strong><span>Generate five audiobook drafts.</span></article>
+                <article><strong>Locked: Global Voice</strong><span>Translate a project into three languages.</span></article>
+              </div>
+            </section>
+            <section class="profile-section profile-message-section">
+              <h3>Messages</h3>
+              <div class="profile-message-columns">
+                <button type="button" data-message-tab="requests">
+                  <strong>Message Requests</strong>
+                  <span>Review new contacts</span>
+                </button>
+                <button type="button" data-message-tab="dms">
+                  <strong>DMs</strong>
+                  <span>Open direct messages</span>
+                </button>
+                <button type="button" data-message-tab="groups">
+                  <strong>Group Chats</strong>
+                  <span>Open team rooms</span>
+                </button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <div class="modal-backdrop" id="profileEditModal" hidden>
+          <section class="modal-card profile-edit-modal" aria-labelledby="profileEditHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Profile</p>
+                <h2 id="profileEditHeading">Edit Profile</h2>
+              </div>
+              <button class="icon-button" id="cancelProfileEditButton" type="button" aria-label="Close edit profile" title="Close">
+                <svg class="ico"><use href="#icon-x"></use></svg>
+              </button>
+            </div>
+            <label>
+              <span>Display Name</span>
+              <input id="editDisplayName" maxlength="64" autocomplete="off">
+            </label>
+            <label>
+              <span>Username</span>
+              <input id="editUsername" maxlength="64" autocomplete="off">
+            </label>
+            <label>
+              <span>Bio</span>
+              <textarea id="editBio" maxlength="1000"></textarea>
+            </label>
+            <button class="primary-button" id="saveProfileEditButton" type="button">Save Profile</button>
+          </section>
+        </div>
+
+        <div class="messages-drawer" id="messagesDrawer" hidden>
+          <div class="messages-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Messages</p>
+                <h2 id="messagesHeading">DMs</h2>
+              </div>
+              <button class="icon-button" id="closeMessagesButton" type="button" aria-label="Close messages" title="Close messages">
+                <svg class="ico"><use href="#icon-stop"></use></svg>
+              </button>
+            </div>
+            <div class="message-tabs" role="tablist" aria-label="Message sections">
+              <button class="is-active" type="button" data-message-tab="requests">Requests</button>
+              <button type="button" data-message-tab="dms">DMs</button>
+              <button type="button" data-message-tab="groups">Groups</button>
+            </div>
+            <div class="message-list" id="messageList"></div>
+          </div>
+        </div>
+
+        <div class="person-context-menu" id="personContextMenu" hidden>
+          <button type="button" data-person-action="add">Send Friend Request</button>
+          <button type="button" data-person-action="visit">Visit Profile</button>
+          <button type="button" data-person-action="message">Send Message</button>
+        </div>
+
+        <div class="toast-notice" id="toastNotice" hidden>You can't use, you can't input inappropriate names.</div>
+
+        <div class="status-bar" id="statusBar" role="status">Ready</div>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
