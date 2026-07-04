@@ -70,6 +70,13 @@ const defaultState = {
   targetPages: 140,
   planSections: "Part 1: Hook and setup\nPart 2: Rising conflict\nPart 3: Climax and resolution",
   planModelVersion: 1,
+  connectedAccounts: {
+    Audible: false,
+    "Apple Books": false,
+    Spotify: false,
+    "Google Play": false,
+    "Direct Store": true
+  },
   narratorCredit: "ChapterForge Ensemble",
   releaseDate: "",
   format: "M4B audiobook",
@@ -189,6 +196,13 @@ const otherSiteTargets = [
   { name: "Google Play", status: "Retail checklist", format: "EPUB companion + audio", accent: "#86a8e7" },
   { name: "Kobo", status: "Partner export", format: "ONIX metadata + M4B", accent: "#9e6fa6" },
   { name: "YouTube Music", status: "Audio episodes", format: "Chapter videos + captions", accent: "#e06c75" }
+];
+const publishTargets = [
+  { name: "Audible", account: "ACX / Audible", accent: "#d8a94c" },
+  { name: "Apple Books", account: "Apple Books Connect", accent: "#54b6a6" },
+  { name: "Spotify", account: "Spotify for Creators", accent: "#8ec07c" },
+  { name: "Google Play", account: "Google Play Books", accent: "#86a8e7" },
+  { name: "Direct Store", account: "SAGA Direct", accent: "#9e6fa6" }
 ];
 const themeOptions = [
   { id: "noir", name: "Noir Grid", accent: "#54b6a6" },
@@ -484,6 +498,7 @@ function bindEvents() {
   document.getElementById("exportPackageButton").addEventListener("click", exportCurrentPackage);
   document.getElementById("exportOtherSitesButton").addEventListener("click", exportAllOtherSitesPackage);
   document.getElementById("clearLibraryButton").addEventListener("click", clearLibrary);
+  els.channelList.addEventListener("click", handlePublishAccountClick);
   els.trackPrevButton.addEventListener("click", () => moveActiveTrack(-1));
   els.trackNextButton.addEventListener("click", () => moveActiveTrack(1));
   els.trackSlider.addEventListener("input", () => setActiveTrack(Number(els.trackSlider.value), false));
@@ -616,6 +631,7 @@ function renderAll() {
   renderVoiceInventory();
   renderSceneCasting();
   renderReleasePreview();
+  renderPublishAccounts();
   renderSearchResults();
   renderLiveExperience();
   renderOtherSites();
@@ -1190,11 +1206,59 @@ function renderVoiceInventory() {
   els.voiceInventory.textContent = `${studioCount} studio / ${neuralCount} neural / ${englishCount} English voices. Best: ${best.name}.`;
 }
 
+function renderPublishAccounts() {
+  if (!els.channelList) return;
+  els.channelList.innerHTML = publishTargets.map((target) => {
+    const connected = Boolean(state.connectedAccounts?.[target.name]);
+    return `
+      <article class="publish-account-card${connected ? " is-connected" : ""}" style="--accent:${target.accent}">
+        <div>
+          <span class="publish-account-mark">${escapeHtml(target.name.slice(0, 2).toUpperCase())}</span>
+          <span>
+            <strong>${escapeHtml(target.name)}</strong>
+            <small>${connected ? `Connected to ${target.account}` : `Connect ${target.account}`}</small>
+          </span>
+        </div>
+        <button class="${connected ? "primary-button" : "icon-text-button"}" type="button" data-publish-action="${connected ? "publish" : "connect"}" data-channel="${escapeHtml(target.name)}">
+          <svg class="ico"><use href="#${connected ? "icon-upload" : "icon-user-circle"}"></use></svg>
+          ${connected ? "One-click publish" : "Connect account"}
+        </button>
+      </article>
+    `;
+  }).join("");
+}
+
+function handlePublishAccountClick(event) {
+  const button = event.target.closest("[data-publish-action]");
+  if (!button) return;
+  const channel = button.dataset.channel;
+  if (button.dataset.publishAction === "connect") {
+    connectPublishAccount(channel);
+    return;
+  }
+  publishAudiobook([channel]);
+}
+
+function connectPublishAccount(channel) {
+  if (!publishTargets.some((target) => target.name === channel)) return;
+  state.connectedAccounts = {
+    ...defaultState.connectedAccounts,
+    ...(state.connectedAccounts || {}),
+    [channel]: true
+  };
+  state.channels = selectedChannels();
+  persistState();
+  renderPublishAccounts();
+  renderReleasePreview();
+  setStatus(`${channel} account connected. One-click publishing is ready.`);
+}
+
 function renderReleasePreview() {
   const words = countWords(state.manuscript);
   const minutes = estimateMinutes(words);
   const quality = averageVoiceQuality();
   const channels = selectedChannels();
+  const connected = connectedPublishChannels();
   els.releasePreview.innerHTML = `
     <dl>
       <div>
@@ -1232,6 +1296,10 @@ function renderReleasePreview() {
       <div>
         <dt>Channels</dt>
         <dd>${escapeHtml(channels.join(", ") || "Unlisted")}</dd>
+      </div>
+      <div>
+        <dt>Connected</dt>
+        <dd>${escapeHtml(connected.join(", ") || "Connect an account")}</dd>
       </div>
     </dl>
   `;
@@ -1295,7 +1363,7 @@ function renderSongPlayer() {
   els.songPlayerTime.textContent = `${formatSongTime(songProgressSeconds)} / ${formatSongTime(duration)}`;
   els.songPlayerTitle.textContent = state.languageOutput.trim().split(/\r?\n/)[0] || `${state.title} audiobook`;
   els.songPlayPauseButton.innerHTML = `
-    <svg class="ico"><use href="#${isPlaying ? "icon-stop" : "icon-play"}"></use></svg>
+    <svg class="ico"><use href="#${isPlaying ? "icon-pause" : "icon-play"}"></use></svg>
     ${isPlaying ? "Pause Book" : "Play Book"}
   `;
 }
@@ -1513,12 +1581,12 @@ function renderLiveRooms() {
         </span>
       </div>
       <div class="room-art">
-        <span>${escapeHtml(room.title)}</span>
+        <span>${escapeHtml(activeTrack.excerpt || room.title)}</span>
       </div>
       <div class="live-room-bottom">
         <div>
           <h3>${escapeHtml(room.title)}</h3>
-          <p>${escapeHtml(activeTrack.title)} - ${escapeHtml(room.description)}</p>
+          <p>${escapeHtml(activeTrack.title)} - ${escapeHtml(activeTrack.excerpt || room.description)}</p>
           <span class="meta-line">${room.listeners} listeners</span>
         </div>
         <button class="live-enter-button" type="button" aria-label="${isEntered ? "Entered" : "Enter"} ${escapeHtml(room.title)}" title="${isEntered ? "Inside room" : "Enter room"}">
@@ -1564,6 +1632,7 @@ function renderRoomStage() {
         <span>Chapter ${track.index}</span>
         <strong>${escapeHtml(track.title)}</strong>
       </div>
+      <p class="audible-story-preview">${escapeHtml(track.excerpt || room.description)}</p>
       <input id="liveAudioProgress" type="range" min="0" max="${duration}" value="${Math.round(liveAudioProgressSeconds)}" aria-label="Live audiobook progress">
       <span class="audible-remaining">${formatSongTime(remaining)} remaining</span>
       <div class="audible-cover">
@@ -1575,7 +1644,7 @@ function renderRoomStage() {
         </button>
         <button class="audible-skip" id="liveRewindButton" type="button" aria-label="Rewind 30 seconds">30</button>
         <button class="audible-play" id="livePlayPauseButton" type="button" aria-label="${liveAudioPlaying ? "Pause audiobook" : "Play audiobook"}">
-          <svg class="ico"><use href="#${liveAudioPlaying ? "icon-stop" : "icon-play"}"></use></svg>
+          <svg class="ico"><use href="#${liveAudioPlaying ? "icon-pause" : "icon-play"}"></use></svg>
         </button>
         <button class="audible-skip" id="liveForwardButton" type="button" aria-label="Forward 30 seconds">30</button>
         <button class="icon-button" id="liveNextTrackButton" type="button" aria-label="Next chapter" title="Next chapter">
@@ -2033,7 +2102,7 @@ function updateLiveAudioProgressUi() {
   const playButton = document.getElementById("livePlayPauseButton");
   if (playButton) {
     playButton.setAttribute("aria-label", liveAudioPlaying ? "Pause audiobook" : "Play audiobook");
-    playButton.innerHTML = `<svg class="ico"><use href="#${liveAudioPlaying ? "icon-stop" : "icon-play"}"></use></svg>`;
+    playButton.innerHTML = `<svg class="ico"><use href="#${liveAudioPlaying ? "icon-pause" : "icon-play"}"></use></svg>`;
   }
 }
 
@@ -2192,28 +2261,137 @@ function planSections() {
 }
 
 function buildTimedBookDraft(targetWords, chapterCount, sections = planSections(), language = "English", style = state.songStyle) {
-  const chapters = Array.from({ length: chapterCount }, (_, index) => {
+  const safeChapterCount = Math.max(1, Math.round(Number(chapterCount) || 1));
+  const safeWords = Math.max(safeChapterCount * 240, Math.round(Number(targetWords) || safeChapterCount * 900));
+  const chapterTargets = distributeWordCount(safeWords, safeChapterCount);
+  const chapters = Array.from({ length: safeChapterCount }, (_, index) => {
     const chapterNumber = index + 1;
     const chapterTitle = timedChapterTitle(chapterNumber);
-    const section = sections[Math.min(sections.length - 1, Math.floor((index / chapterCount) * sections.length))] || sections[0];
+    const section = sections[Math.min(sections.length - 1, Math.floor((index / safeChapterCount) * sections.length))] || sections[0];
     const beat = storyBeatForChapter(chapterNumber, section, style);
-    return [
-      `Chapter ${chapterNumber}: ${chapterTitle}`,
-      `NARRATOR: ${beat.opening}`,
-      `NARRATOR: ${beat.detail}`,
-      `MARA VOSS: "${beat.mara}"`,
-      `CAPTAIN ROOK: "${beat.rook}"`,
-      `NARRATOR: ${beat.turn}`,
-      `THE ARCHIVIST: "${beat.archivist}"`,
-      `NARRATOR: ${beat.close}`,
-      ""
-    ].join("\n");
+    return buildChapterManuscript(chapterNumber, chapterTitle, section, beat, chapterTargets[index] || 0, style);
   });
   return [
     `${state.title} - ${language} Audiobook Manuscript`,
     "",
     chapters.join("\n")
   ].join("\n");
+}
+
+function distributeWordCount(totalWords, count) {
+  const safeCount = Math.max(1, Math.round(Number(count) || 1));
+  const safeWords = Math.max(safeCount, Math.round(Number(totalWords) || safeCount));
+  const base = Math.floor(safeWords / safeCount);
+  const remainder = safeWords % safeCount;
+  return Array.from({ length: safeCount }, (_, index) => base + (index < remainder ? 1 : 0));
+}
+
+function buildChapterManuscript(chapterNumber, chapterTitle, section, beat, targetWords, style = "") {
+  const lines = [
+    `Chapter ${chapterNumber}: ${chapterTitle}`,
+    `NARRATOR: ${beat.opening} ${beat.detail}`,
+    `NARRATOR: ${beat.memory}`,
+    `MARA VOSS: "${beat.mara}"`,
+    `CAPTAIN ROOK: "${beat.rook}"`,
+    `NARRATOR: ${beat.crossing}`,
+    `MARA VOSS: "${beat.maraSecond}"`
+  ];
+  let currentWords = countWords(lines.join(" "));
+  let pass = 0;
+  const maxPasses = Math.min(620, Math.max(3, Math.ceil(Math.max(1, targetWords) / 135) + 3));
+  while (currentWords < targetWords && pass < maxPasses) {
+    const block = chapterExpansionLines(chapterNumber, section, beat, pass, style);
+    lines.push(...block);
+    currentWords += countWords(block.join(" "));
+    pass += 1;
+  }
+  lines.push(
+    `NARRATOR: ${beat.turn}`,
+    `NARRATOR: ${beat.reveal}`,
+    `THE ARCHIVIST: "${beat.archivist}"`,
+    `CAPTAIN ROOK: "${beat.rookSecond}"`,
+    `NARRATOR: ${beat.close}`,
+    ""
+  );
+  return lines.join("\n");
+}
+
+function chapterExpansionLines(chapterNumber, section, beat, pass, style = "") {
+  const calm = String(style || "").toLowerCase().includes("calm");
+  const sensory = [
+    "The lamplight pooled on the floor in amber circles, and every circle held a faint scratch of handwriting that faded whenever Mara tried to read it directly.",
+    "Dust lifted from the shelves in slow ribbons, carrying the smell of rain, leather, and a winter fire that had gone out long before any of them were born.",
+    "Above them, the glass ceiling showed a sky crowded with unfamiliar stars, each one bright enough to cast a tiny shadow across the open books.",
+    "The hidden room answered with small domestic sounds: a chair settling, a kettle ticking, a page turning itself with the patience of an old judge.",
+    "A draft moved through the stacks without touching their coats, stirring only the loose paper scattered across the tables."
+  ];
+  const motion = [
+    "Mara followed the motion of the map until the ink path bent away from the page and seemed to continue across the floorboards.",
+    "Rook tested each step before letting her take it, but the library moved under them anyway, reshaping the aisle into a narrow bridge of shelves.",
+    "The Archivist watched from the edge of the lantern glow, never hurrying, never blinking, as if time had agreed to wait for him.",
+    "The shelves shifted with soft knocks, opening a corridor that had not existed when Mara looked away only a moment before.",
+    "A page loosened from the living book and drifted ahead of them, stopping whenever they stopped, leading whenever they were brave enough to follow."
+  ];
+  const interior = [
+    "Mara wanted to name what she felt as fear, but fear was too simple. This was recognition, the cold shock of meeting a secret that had been waiting for her.",
+    "Rook made another joke under his breath, then stopped himself, because even his defiance sounded too loud in the listening dark.",
+    "For the first time since entering the library, Mara understood that the question was not whether the story would hurt them. The question was what kind of truth it needed before it would let them go.",
+    "The closer they came to the answer, the more the room seemed to remember them in advance, placing chairs and shadows where their bodies would soon be.",
+    "Something in Mara's chest tightened, not with panic, but with the stubborn hope that a lost thing might still be found if someone read carefully enough."
+  ];
+  const obstacles = [
+    "Then the letters on the nearest shelf began to rearrange, sliding from spine to spine until they formed a warning in a language Mara could almost understand.",
+    "The floor split into neat black seams, not wide enough to swallow them, but wide enough to show a depth filled with drifting pages.",
+    "A bell rang below the city, and the map folded itself in half, hiding the route just when they needed it most.",
+    "The living book snapped shut with a sound like thunder trapped inside a box, and every candle in the room leaned toward Mara.",
+    "A shadow crossed the far wall in the shape of a person neither of them had seen, though both of them knew at once that it had seen them."
+  ];
+  const resolutions = [
+    "Mara placed both hands on the table and read the next sentence aloud, slowly enough that the room could not pretend to misunderstand her.",
+    "Rook set the lantern down between them and the dark, giving the story a circle of light it would have to cross honestly.",
+    "The map opened again when Mara stopped asking it for an escape and asked it where the truth had been buried.",
+    "The page ahead of them brightened at the edges, then settled into words that sounded less like command and more like invitation.",
+    "Together they took the next step, and the shelves held still, as if respect had finally entered the room."
+  ];
+  const maraLines = [
+    "I am tired of being led by half answers. If the library wants my voice, it can start by giving me the truth.",
+    "This place keeps testing whether I will look away. I will not.",
+    "A map is not a promise, Rook. But it is something that believes a way forward exists.",
+    "If my name is in that book, then I get to decide how it is spoken.",
+    "Somebody hid this story because they were afraid of what it would ask from them."
+  ];
+  const rookLines = [
+    "For the record, I dislike doors that appear after midnight and books that behave like witnesses.",
+    "I am still here. Whatever this room thinks it knows about you, it has to get through me first.",
+    "A clean answer would be nice. A dry floor would also be nice. I am prepared to be disappointed.",
+    "If the map starts negotiating, let me do the rude part.",
+    "You read. I will keep watch. That arrangement has kept us alive for at least three impossible rooms."
+  ];
+  const archivistLines = [
+    "A story becomes dangerous when the wrong person is willing to call it finished.",
+    "Do not confuse secrecy with silence. The library has been speaking for years.",
+    "Every chapter asks for payment. The kinder ones tell you the price first.",
+    "Names are doors. Memories are keys. Regret is what happens when both are left unused.",
+    "If you want the ending to change, read the page you have been avoiding."
+  ];
+  const stage = pickBySeed(["first", "second", "third", "next", "last"], chapterNumber, pass, 4);
+  const sectionName = String(section || "journey").toLowerCase();
+  const lines = [
+    `NARRATOR: ${pickBySeed(sensory, chapterNumber, pass)} ${pickBySeed(motion, chapterNumber, pass, 1)}`,
+    `NARRATOR: ${pickBySeed(interior, chapterNumber, pass, 2)} ${pickBySeed(obstacles, chapterNumber, pass, 3)}`,
+    `MARA VOSS: "${pickBySeed(maraLines, chapterNumber, pass, 1)}"`,
+    `CAPTAIN ROOK: "${pickBySeed(rookLines, chapterNumber, pass, 2)}"`,
+    `NARRATOR: In the ${stage} movement of the ${sectionName}, ${calm ? "the danger softened into something watchful" : "the danger pressed closer with deliberate force"}, and the scene deepened instead of skipping ahead. ${pickBySeed(resolutions, chapterNumber, pass, 4)}`
+  ];
+  if (pass % 3 === 2) {
+    lines.push(`THE ARCHIVIST: "${pickBySeed(archivistLines, chapterNumber, pass, 3)}"`);
+    lines.push(`NARRATOR: ${beat.detail} This time the detail mattered, because it gave Mara one more piece of the pattern and one less reason to turn back.`);
+  }
+  return lines;
+}
+
+function pickBySeed(items, chapterNumber, pass, offset = 0) {
+  return items[(chapterNumber * 7 + pass * 3 + offset) % items.length];
 }
 
 function storyBeatForChapter(chapterNumber, section, style = "") {
@@ -2261,15 +2439,62 @@ function storyBeatForChapter(chapterNumber, section, style = "") {
     "The broken promise had a voice, and it knew Mara by name.",
     "Behind them, the library exhaled, and the story began again."
   ];
+  const memories = [
+    "She remembered being twelve years old and hiding under a reading table while thunder rolled above the city, promising herself she would never be afraid of a quiet room again.",
+    "The changed street bent through the ink like a road seen under water, and every window drawn along it held the same small candle.",
+    "Mara wanted the door to be only wood and hinges, but the grain moved beneath her gaze like a sleeping animal deciding whether to wake.",
+    "The footprints were too small for Rook, too deep for Mara, and too fresh for a room that had been sealed since winter.",
+    "For one breath, the humming key sounded exactly like her father's voice calling her home from the orchard at dusk.",
+    "No one spoke as the hidden city widened below them, because the sight of it made language feel unfinished.",
+    "The first glass apple turned slowly on its branch, showing Mara a memory of herself she did not remember living.",
+    "Rook kept his hand near his sword, but even he looked smaller in the listening room, as if the walls had weighed his courage and found it mortal.",
+    "The stolen memory left a clean ache behind it, the way a missing tooth keeps reminding the tongue of its shape.",
+    "Mara could feel every door in the library waiting for her voice, and the waiting was worse than any lock.",
+    "The broken promise had settled into the shelves like dust, touching every book without belonging to any of them.",
+    "Open air moved through the stacks for the first time in years, carrying the smell of rain, apples, and ink."
+  ];
+  const crossings = [
+    "They crossed the reading room one slow step at a time, passing tables set with cups of cold tea and spectacles folded beside books no hand had closed.",
+    "Mara traced the new street with one finger; the parchment warmed, and somewhere beyond the windows a bell began to answer.",
+    "Rook lifted the lantern. The flame bent toward the hidden door instead of away from it, as if light itself knew where to go.",
+    "The stacks tightened around them, aisle by aisle, until the only path left was the one marked by the impossible footprints.",
+    "The key rose from Mara's palm without touching her skin, turning toward a blank stretch of wall that had no lock at all.",
+    "Their staircase became a bridge, and beneath it the glass roofs of the buried city reflected Mara's face in a thousand uncertain versions.",
+    "Each tree in the orchard leaned toward them with a delicate chime, branches touching branches like listeners sharing a secret.",
+    "The Archivist placed three books on the table: one red, one black, and one bound in glass so clear it seemed empty.",
+    "Words scraped themselves from one page to another, rearranging the chapter while Mara watched her own choices become sentences.",
+    "Rook stood at the threshold with his jaw tight, guarding her not from enemies, but from the terrible hope of being believed.",
+    "The promise spoke through the floorboards first, a low vibration that made every lamp tremble.",
+    "The open door showed not an exit but a morning street, ordinary and bright and almost impossible to trust."
+  ];
+  const reveals = [
+    "Then Mara saw that the map was not leading them deeper into the library. It was leading the library back to itself.",
+    "The fountain on the parchment spilled one drop of real water, and where it struck the floor, a silver root pushed through the stone.",
+    "A name appeared above the door in careful script: not Mara's, not Rook's, but the name of someone both of them had lost.",
+    "The footprints ended in front of the living book, and the last print was still filling with rain.",
+    "The wall opened onto a staircase that descended through seasons: autumn at the first step, winter at the second, spring waiting far below.",
+    "At the center of the buried city stood a dry fountain shaped like an open book, and every page was a street.",
+    "Inside the apple, Mara's mother looked up from a younger world and mouthed a warning through the glass.",
+    "The empty book was not empty; its letters were simply waiting for someone brave enough to disappoint them.",
+    "Mara's vanished name returned at the bottom of the page, but the handwriting was not hers.",
+    "Every door opened because the library had finally heard the right story in the right voice.",
+    "Rook whispered the apology before Mara could ask for it, and the shelves answered by letting one hidden book fall.",
+    "The story did not end. It made room."
+  ];
   const index = (chapterNumber - 1) % openings.length;
   const softer = isCalm ? "softly" : "clearly";
   return {
     opening: openings[index],
     detail: details[index],
+    memory: memories[index],
     mara: chapterNumber % 3 === 0 ? "If this place wants a witness, it can have one. But it does not get to choose what I remember." : "I can feel the story pulling at us. It is not a trap, not exactly, but it is hungry.",
     rook: chapterNumber % 2 === 0 ? "Hungry buildings are exactly the kind I prefer to leave behind." : "Stay close. If the shelves start whispering your name, let them finish before you answer.",
+    crossing: crossings[index],
+    maraSecond: chapterNumber % 2 === 0 ? "Then we keep walking until the story has to tell us the truth." : "I came here for a map, but I think the map came here for me.",
     turn: `The ${section.toLowerCase()} of the journey settled around them ${softer}, shaping every step into a decision they could not take back.`,
     archivist: chapterNumber % 4 === 0 ? "A book only lies when its reader is afraid of the truth." : "Every locked story asks the same question: what are you willing to hear?",
+    reveal: reveals[index],
+    rookSecond: chapterNumber % 3 === 0 ? "I am not afraid of a book. I am afraid you are starting to sound like one." : "Whatever answers next, let me stand between it and you.",
     close: closes[index]
   };
 }
@@ -2847,9 +3072,16 @@ function stopAllPlayback() {
   setStatus("Playback stopped");
 }
 
-function publishAudiobook() {
+function publishAudiobook(targetChannels = connectedPublishChannels()) {
+  targetChannels = Array.isArray(targetChannels) ? targetChannels : connectedPublishChannels();
+  if (!targetChannels.length) {
+    setStatus("Connect at least one publishing account first.");
+    renderPublishAccounts();
+    return;
+  }
   const words = countWords(state.manuscript);
   const book = currentPackage();
+  book.channels = targetChannels;
   book.id = `release-${Date.now()}`;
   book.publishedAt = new Date().toISOString();
   book.status = "Published";
@@ -2858,7 +3090,7 @@ function publishAudiobook() {
   saveLibrary();
   renderLibrary();
   switchView("otherSites");
-  setStatus(`${book.title} published to the site. Other-site packages are ready.`);
+  setStatus(`${book.title} published to ${targetChannels.join(", ")}.`);
 }
 
 function exportCurrentPackage() {
@@ -2947,7 +3179,17 @@ function clearLibrary() {
 }
 
 function selectedChannels() {
+  const connected = connectedPublishChannels();
+  if (connected.length) return connected;
   return Array.from(els.channelList.querySelectorAll("input:checked")).map((input) => input.value);
+}
+
+function connectedPublishChannels() {
+  const accounts = {
+    ...defaultState.connectedAccounts,
+    ...(state.connectedAccounts || {})
+  };
+  return publishTargets.filter((target) => accounts[target.name]).map((target) => target.name);
 }
 
 function liveTracks() {
@@ -2967,7 +3209,8 @@ function liveTracks() {
       title: fallbackLiveTrackTitle(index),
       lines: segment.length || sourceLines.length,
       words: countWords(segmentText),
-      runtime: formatClock(targets[index] || 0)
+      runtime: formatClock(targets[index] || 0),
+      excerpt: storyExcerpt(segmentText)
     };
   });
 }
@@ -2981,9 +3224,19 @@ function tracksFromChapters(chapters) {
       title: chapter.title,
       lines: chapter.lines.length,
       words,
-      runtime: formatClock(targets[index] || 0)
+      runtime: formatClock(targets[index] || 0),
+      excerpt: storyExcerpt(chapter.lines.map((line) => line.text).join(" "))
     };
   });
+}
+
+function storyExcerpt(text, limit = 72) {
+  const words = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+  return words.slice(0, limit).join(" ") + (words.length > limit ? "..." : "");
 }
 
 function fallbackLiveTrackTitle(index) {
@@ -3261,6 +3514,10 @@ function loadState() {
       liveChat: {
         ...clone(defaultState.liveChat),
         ...(saved.liveChat || {})
+      },
+      connectedAccounts: {
+        ...clone(defaultState.connectedAccounts),
+        ...(saved.connectedAccounts || {})
       }
     };
     if ((saved.voiceUpgradeVersion || 0) < 2) {
