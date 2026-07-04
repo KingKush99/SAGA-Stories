@@ -1,8 +1,11 @@
 const storageKey = "chapterforge-project-v1";
 const libraryKey = "chapterforge-library-v1";
-const minAudiobookSeconds = 10 * 60;
-const maxAudiobookSeconds = 3 * 60 * 60;
+const minAudiobookSeconds = 60;
+const maxAudiobookSeconds = 10 * 60 * 60;
 const narrationWordsPerMinute = 155;
+const wordsPerPage = 275;
+const maxPlannedPages = Math.floor((maxAudiobookSeconds / 60) * narrationWordsPerMinute / wordsPerPage);
+const popularLanguages = ["English", "Mandarin Chinese", "Hindi", "Spanish", "French", "Arabic", "Bengali", "Portuguese", "Indonesian", "Urdu"];
 
 const sampleManuscript = `Chapter 1: The Locked Library
 NARRATOR: Rain tapped against the glass roof of the old city library as Mara Voss slipped between the stacks.
@@ -62,7 +65,11 @@ const defaultState = {
     lastUsernameChange: ""
   },
   liveChat: defaultLiveChat,
-  targetDurationSeconds: 30 * 60,
+  targetDurationSeconds: Math.ceil(((140 * wordsPerPage) / narrationWordsPerMinute) * 60),
+  targetChapters: 12,
+  targetPages: 140,
+  planSections: "Part 1: Hook and setup\nPart 2: Rising conflict\nPart 3: Climax and resolution",
+  planModelVersion: 1,
   narratorCredit: "ChapterForge Ensemble",
   releaseDate: "",
   format: "M4B audiobook",
@@ -73,7 +80,7 @@ const defaultState = {
   voiceUpgradeVersion: 2,
   audioQuality: "wav",
   mastering: "audiobook",
-  targetLanguage: "Spanish",
+  targetLanguage: "English",
   songStyle: "cinematic mystery narration",
   languageMode: "translate",
   languageOutput: "",
@@ -264,12 +271,12 @@ let songOscillators = [];
 let songGain = null;
 let songProgressTimer = null;
 let songProgressSeconds = 0;
+let songUtterance = null;
 let activePersonContextId = "";
 let profileHistory = [];
 let liveAudioTimer = null;
 let liveAudioPlaying = false;
 let liveAudioProgressSeconds = 0;
-const songDurationSeconds = 96;
 
 const els = {};
 
@@ -311,16 +318,17 @@ function cacheElements() {
   els.genreSelect = document.getElementById("genreSelect");
   els.wordCount = document.getElementById("wordCount");
   els.runtimeEstimate = document.getElementById("runtimeEstimate");
+  els.pageCountDisplay = document.getElementById("pageCountDisplay");
   els.targetWordCountDisplay = document.getElementById("targetWordCountDisplay");
   els.scriptRuntimeEstimate = document.getElementById("scriptRuntimeEstimate");
-  els.durationHours = document.getElementById("durationHours");
-  els.durationMinutes = document.getElementById("durationMinutes");
-  els.durationSeconds = document.getElementById("durationSeconds");
+  els.planChaptersInput = document.getElementById("planChaptersInput");
+  els.planPagesInput = document.getElementById("planPagesInput");
   els.chapterCount = document.getElementById("chapterCount");
   els.castCount = document.getElementById("castCount");
   els.manuscriptInput = document.getElementById("manuscriptInput");
   els.targetLanguageInput = document.getElementById("targetLanguageInput");
   els.songStyleInput = document.getElementById("songStyleInput");
+  els.planSectionsInput = document.getElementById("planSectionsInput");
   els.languageModeSelect = document.getElementById("languageModeSelect");
   els.languageOutput = document.getElementById("languageOutput");
   els.weirdnessRange = document.getElementById("weirdnessRange");
@@ -498,14 +506,14 @@ function bindEvents() {
     });
   });
 
-  [els.bookTitle, els.authorName, els.genreSelect, els.manuscriptInput, els.targetLanguageInput, els.songStyleInput, els.languageModeSelect, els.languageOutput, els.voiceModeSelect, els.audioQualitySelect, els.masteringSelect, els.narratorCredit, els.releaseDate, els.formatSelect, els.priceInput, els.summaryInput].forEach((input) => {
+  [els.bookTitle, els.authorName, els.genreSelect, els.manuscriptInput, els.targetLanguageInput, els.songStyleInput, els.planSectionsInput, els.languageModeSelect, els.languageOutput, els.voiceModeSelect, els.audioQualitySelect, els.masteringSelect, els.narratorCredit, els.releaseDate, els.formatSelect, els.priceInput, els.summaryInput].forEach((input) => {
     input.addEventListener("input", handleInputChange);
     input.addEventListener("change", handleInputChange);
   });
-  [els.durationHours, els.durationMinutes, els.durationSeconds].forEach((input) => {
-    input.addEventListener("input", () => handleDurationInput(false));
-    input.addEventListener("change", () => handleDurationInput(true));
-    input.addEventListener("blur", () => handleDurationInput(true));
+  [els.planChaptersInput, els.planPagesInput].forEach((input) => {
+    input.addEventListener("input", () => handlePlanInput(false));
+    input.addEventListener("change", () => handlePlanInput(true));
+    input.addEventListener("blur", () => handlePlanInput(true));
   });
 
   els.channelList.addEventListener("change", () => {
@@ -531,9 +539,10 @@ function hydrateInputs() {
   els.authorName.value = state.author;
   els.genreSelect.value = state.genre;
   els.manuscriptInput.value = state.manuscript;
-  hydrateDurationInputs();
+  hydratePlanInputs();
   els.targetLanguageInput.value = state.targetLanguage;
   els.songStyleInput.value = state.songStyle;
+  els.planSectionsInput.value = state.planSections;
   els.languageModeSelect.value = normalizeLanguageMode(state.languageMode);
   els.languageOutput.value = state.languageOutput;
   els.weirdnessRange.value = String(state.weirdness);
@@ -558,8 +567,9 @@ function handleInputChange() {
   state.author = els.authorName.value.trim() || "Unknown Author";
   state.genre = els.genreSelect.value;
   state.manuscript = els.manuscriptInput.value;
-  state.targetLanguage = els.targetLanguageInput.value.trim() || "English";
+  state.targetLanguage = els.targetLanguageInput.value || "English";
   state.songStyle = els.songStyleInput.value.trim() || "cinematic mystery narration";
+  state.planSections = els.planSectionsInput.value.trim() || defaultState.planSections;
   state.languageMode = normalizeLanguageMode(els.languageModeSelect.value);
   state.languageOutput = els.languageOutput.value;
   state.voiceMode = els.voiceModeSelect.value;
@@ -577,11 +587,12 @@ function handleInputChange() {
   renderAll();
 }
 
-function handleDurationInput(normalize) {
-  state.targetDurationSeconds = readDurationInputs(normalize);
+function handlePlanInput(normalize) {
+  readPlanInputs(normalize);
   persistState();
   renderStats();
   renderReleasePreview();
+  renderTrackSlider();
 }
 
 function renderAll() {
@@ -881,11 +892,14 @@ function updateSongSliderLabels() {
 function renderStats() {
   const words = countWords(state.manuscript);
   const minutes = estimateMinutes(words);
+  updateRuntimeFromPlan();
+  const targetWords = targetWordCount();
   els.wordCount.textContent = formatNumber(words);
+  els.pageCountDisplay.textContent = formatNumber(state.targetPages);
   els.runtimeEstimate.textContent = formatDuration(state.targetDurationSeconds);
-  els.targetWordCountDisplay.textContent = formatNumber(targetWordCount());
+  els.targetWordCountDisplay.textContent = formatNumber(targetWords);
   els.scriptRuntimeEstimate.textContent = `${minutes}m`;
-  els.chapterCount.textContent = String(parsedBook.chapters.length || 1);
+  els.chapterCount.textContent = String(state.targetChapters);
   els.castCount.textContent = String(Object.keys(state.cast).length);
 }
 
@@ -1069,6 +1083,14 @@ function renderReleasePreview() {
         <dd>${formatDuration(state.targetDurationSeconds)}</dd>
       </div>
       <div>
+        <dt>Pages</dt>
+        <dd>${formatNumber(state.targetPages)}</dd>
+      </div>
+      <div>
+        <dt>Plan Chapters</dt>
+        <dd>${formatNumber(state.targetChapters)}</dd>
+      </div>
+      <div>
         <dt>Script Estimate</dt>
         <dd>${minutes} minutes</dd>
       </div>
@@ -1136,9 +1158,10 @@ function renderThemePicker() {
 function renderSongPlayer() {
   if (!els.songProgress) return;
   const isPlaying = Boolean(songProgressTimer);
-  els.songProgress.max = String(songDurationSeconds);
+  const duration = bookPlaybackDurationSeconds();
+  els.songProgress.max = String(duration);
   els.songProgress.value = String(Math.round(songProgressSeconds));
-  els.songPlayerTime.textContent = formatSongTime(songProgressSeconds);
+  els.songPlayerTime.textContent = `${formatSongTime(songProgressSeconds)} / ${formatSongTime(duration)}`;
   els.songPlayerTitle.textContent = state.languageOutput.trim().split(/\r?\n/)[0] || `${state.title} audiobook`;
   els.songPlayPauseButton.innerHTML = `
     <svg class="ico"><use href="#${isPlaying ? "icon-stop" : "icon-play"}"></use></svg>
@@ -1510,19 +1533,23 @@ function renderOtherSites() {
 }
 
 async function createTimedBook() {
-  state.targetDurationSeconds = readDurationInputs();
+  readPlanInputs(true);
   const targetWords = targetWordCount();
-  const chapterCount = recommendedChapterCount(state.targetDurationSeconds);
+  const chapterCount = state.targetChapters;
   const duration = formatDuration(state.targetDurationSeconds);
-  setStatus(`Creating ${duration} audiobook plan`);
+  const sections = planSections();
+  setStatus(`Planning ${state.targetPages} pages across ${chapterCount} chapters`);
   const prompt = [
     `Create an original ${state.genre} audiobook manuscript plan titled "${state.title}" by ${state.author}.`,
-    `Exact target runtime: ${duration}. Target word count: ${targetWords} words at ${narrationWordsPerMinute} words per minute.`,
-    `Create ${chapterCount} chapters with timecoded chapter targets down to the second.`,
-    "Include speaker-labeled sample scenes for Narrator and characters. Keep the structure ready for full-cast audiobook production.",
+    `Plan size: ${state.targetPages} pages, ${chapterCount} chapters, about ${targetWords} words at ${wordsPerPage} words per page.`,
+    `Estimated audiobook runtime is ${duration} at ${narrationWordsPerMinute} narrated words per minute. Do not make runtime the control; derive it from words.`,
+    `Use these book sections: ${sections.join("; ")}.`,
+    "For every section, include a clear purpose, chapter range, page range, story beats, and character/audio notes.",
+    "For every chapter, include page target, word target, plot purpose, conflict, scene list, narrator notes, and speaker-labeled sample lines.",
+    "Keep the plan ready for full-cast audiobook production.",
     "Return only the manuscript plan and sample opening scenes."
   ].join("\n");
-  const fallback = buildTimedBookDraft(targetWords, chapterCount);
+  const fallback = buildTimedBookDraft(targetWords, chapterCount, sections);
   const result = await runTextGeneration(prompt, fallback);
   state.manuscript = result;
   els.manuscriptInput.value = result;
@@ -1531,7 +1558,7 @@ async function createTimedBook() {
   clampActiveChapter();
   persistState();
   renderAll();
-  setStatus(`Created ${duration} audiobook target`);
+  setStatus(`Created ${chapterCount}-chapter, ${state.targetPages}-page book plan`);
 }
 
 async function handleGenerateBookClick() {
@@ -1570,13 +1597,16 @@ async function translateManuscript() {
 
 async function generateBookOutput() {
   syncLanguageState();
+  readPlanInputs(true);
   const language = state.targetLanguage || "English";
   const style = state.songStyle || "cinematic mystery narration";
   setStatus(`Generating ${language} audiobook`);
   const prompt = [
     `Create an original audiobook draft in ${language}.`,
     `Style: ${style}.`,
-    "Include title, chapter beats, narrator direction, character notes, and short production notes.",
+    `Plan around ${state.targetPages} pages and ${state.targetChapters} chapters, with sections: ${planSections().join("; ")}.`,
+    `Estimated runtime should be derived from roughly ${formatNumber(targetWordCount())} words, not manually chosen.`,
+    "Include title, section plan, chapter beats, narrator direction, character notes, page targets, and short production notes.",
     "Keep it clear, emotionally specific, and suitable for full-cast audiobook production.",
     "",
     state.manuscript
@@ -1632,18 +1662,50 @@ function toggleSongPlayback() {
 
 function startSongPlayback() {
   stopSpeech(false);
-  if (songProgressSeconds >= songDurationSeconds) {
+  const duration = bookPlaybackDurationSeconds();
+  if (songProgressSeconds >= duration) {
     songProgressSeconds = 0;
+  }
+  stopSongNodes();
+  if ("speechSynthesis" in window) {
+    const text = bookPlaybackText();
+    const cast = state.cast.narrator || defaultState.cast.narrator;
+    songUtterance = new SpeechSynthesisUtterance(text);
+    applyCastVoice(songUtterance, cast);
+    songUtterance.volume = 1;
+    songUtterance.onend = () => {
+      songUtterance = null;
+      stopSongPlayback(false);
+      setStatus("Audiobook preview complete");
+    };
+    songUtterance.onerror = () => {
+      songUtterance = null;
+      stopSongPlayback(false);
+      setStatus("Audiobook preview stopped");
+    };
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.resume();
+    window.speechSynthesis.speak(songUtterance);
+    songProgressTimer = window.setInterval(() => {
+      songProgressSeconds = Math.min(bookPlaybackDurationSeconds(), songProgressSeconds + 0.5);
+      renderSongPlayer();
+      if (songProgressSeconds >= bookPlaybackDurationSeconds()) {
+        stopSongPlayback(false);
+        setStatus("Audiobook preview complete");
+      }
+    }, 500);
+    renderSongPlayer();
+    setStatus("Audiobook narration playing");
+    return;
   }
   const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextCtor) {
     setStatus("Audiobook playback is unavailable in this browser");
     return;
   }
-  stopSongNodes();
   songAudioContext = new AudioContextCtor();
   songGain = songAudioContext.createGain();
-  songGain.gain.value = 0.035;
+  songGain.gain.value = 0.16;
   songGain.connect(songAudioContext.destination);
   const base = 110 + Math.round((state.styleInfluence || 80) * 0.6);
   const spread = 1 + ((state.weirdness || 10) / 220);
@@ -1660,9 +1722,9 @@ function startSongPlayback() {
     return osc;
   });
   songProgressTimer = window.setInterval(() => {
-    songProgressSeconds = Math.min(songDurationSeconds, songProgressSeconds + 0.25);
+    songProgressSeconds = Math.min(bookPlaybackDurationSeconds(), songProgressSeconds + 0.25);
     renderSongPlayer();
-    if (songProgressSeconds >= songDurationSeconds) {
+    if (songProgressSeconds >= bookPlaybackDurationSeconds()) {
       stopSongPlayback(false);
       setStatus("Audiobook preview complete");
     }
@@ -1672,6 +1734,9 @@ function startSongPlayback() {
 }
 
 function pauseSongPlayback() {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.pause();
+  }
   stopSongNodes();
   renderSongPlayer();
   setStatus("Audiobook paused");
@@ -1679,6 +1744,10 @@ function pauseSongPlayback() {
 
 function stopSongPlayback(resetProgress = true) {
   stopSongNodes();
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+  songUtterance = null;
   if (resetProgress) {
     songProgressSeconds = 0;
   }
@@ -1703,8 +1772,26 @@ function stopSongNodes() {
   songGain = null;
 }
 
+function bookPlaybackText() {
+  const output = (state.languageOutput || "").trim();
+  const manuscript = (state.manuscript || "").trim();
+  const source = output || manuscript || `${state.title}. ${state.summary}`;
+  const clean = source
+    .replace(/^SECTION\b.*$/gim, "")
+    .replace(/^PAGE TARGET:.*$/gim, "")
+    .replace(/^BOOK PLAN:.*$/gim, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return clean.slice(0, 1800) || "Audiobook preview is ready.";
+}
+
+function bookPlaybackDurationSeconds() {
+  updateRuntimeFromPlan();
+  return clampDuration(state.targetDurationSeconds || defaultState.targetDurationSeconds);
+}
+
 function seekSongProgress(value) {
-  songProgressSeconds = clamp(Number(value) || 0, 0, songDurationSeconds);
+  songProgressSeconds = clamp(Number(value) || 0, 0, bookPlaybackDurationSeconds());
   renderSongPlayer();
 }
 
@@ -1852,7 +1939,7 @@ async function speakHdLanguageOutput(text, cast) {
 }
 
 function syncLanguageState() {
-  state.targetLanguage = els.targetLanguageInput.value.trim() || "English";
+  state.targetLanguage = els.targetLanguageInput.value || "English";
   state.songStyle = els.songStyleInput.value.trim() || "cinematic mystery narration";
   state.languageMode = normalizeLanguageMode(els.languageModeSelect.value);
   state.languageOutput = sanitizeGeneratedBookText(els.languageOutput.value);
@@ -1977,23 +2064,50 @@ function buildOfflineBook(language, style) {
   ].join("\n");
 }
 
-function buildTimedBookDraft(targetWords, chapterCount) {
+function planSections() {
+  const source = state.planSections || defaultState.planSections;
+  const sections = String(source)
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^[-*\d.\s]+/, ""))
+    .filter(Boolean);
+  return sections.length ? sections.slice(0, 12) : ["Setup", "Rising conflict", "Resolution"];
+}
+
+function buildTimedBookDraft(targetWords, chapterCount, sections = planSections()) {
   const duration = formatDuration(state.targetDurationSeconds);
   const chapterSeconds = distributeSeconds(state.targetDurationSeconds, chapterCount);
   const wordsPerChapter = distributeWords(targetWords, chapterCount);
+  const pagesPerChapter = distributeWords(state.targetPages, chapterCount);
+  const sectionPlans = sections.map((section, index) => {
+    const startChapter = Math.floor((index * chapterCount) / sections.length) + 1;
+    const endChapter = Math.floor(((index + 1) * chapterCount) / sections.length);
+    const startPage = Math.floor((index * state.targetPages) / sections.length) + 1;
+    const endPage = Math.floor(((index + 1) * state.targetPages) / sections.length);
+    return [
+      `SECTION ${index + 1}: ${section}`,
+      `CHAPTER RANGE: Chapters ${startChapter}-${Math.max(startChapter, endChapter)}`,
+      `PAGE RANGE: Pages ${startPage}-${Math.max(startPage, endPage)}`,
+      `PURPOSE: Move the story through ${section.toLowerCase()} while keeping the audiobook clear and easy to follow.`,
+      `AUDIO NOTES: Mark major character entrances, narrator emphasis, and chapter-ending hooks.`,
+      ""
+    ].join("\n");
+  });
   const chapters = chapterSeconds.map((seconds, index) => {
     const chapterNumber = index + 1;
     const chapterTitle = timedChapterTitle(chapterNumber);
+    const chapterPages = pagesPerChapter[index];
     const lines = [
       `Chapter ${chapterNumber}: ${chapterTitle}`,
       ...(index === 0 ? [
-        `BOOK TARGET: ${duration}`,
-        `BOOK WORD TARGET: ${formatNumber(targetWords)} words`,
-        `BOOK CHAPTERS: ${chapterCount}`,
-        `PACE: ${narrationWordsPerMinute} words per minute`
+        `BOOK PLAN: ${formatNumber(state.targetPages)} pages, ${chapterCount} chapters, about ${formatNumber(targetWords)} words`,
+        `ESTIMATED AUDIOBOOK RUNTIME: ${duration}`,
+        `PAGE PACE: ${wordsPerPage} words per page`,
+        `NARRATION PACE: ${narrationWordsPerMinute} words per minute`
       ] : []),
-      `TARGET: ${formatClock(seconds)} | ${formatNumber(wordsPerChapter[index])} words`,
-      `NARRATOR: This chapter is planned for ${formatClock(seconds)} of finished audio, with pacing calibrated for a ${duration} audiobook.`,
+      `PAGE TARGET: ${chapterPages} pages | ${formatNumber(wordsPerChapter[index])} words | estimated ${formatClock(seconds)} audio`,
+      `CHAPTER PURPOSE: Advance one major choice, reveal one new detail, and end with a clear reason to continue.`,
+      `SCENES: Opening image; character decision; complication; turn; closing hook.`,
+      `NARRATOR: This chapter should sound polished, audible, and paced for long-form listening.`,
       `MARA VOSS: We need the story to land exactly on time, not one second loose.`,
       `CAPTAIN ROOK: Then every scene needs a job, a beat, and a clean exit.`,
       `THE ARCHIVIST: The final manuscript should expand this outline to ${formatNumber(wordsPerChapter[index])} words before recording.`,
@@ -2001,7 +2115,14 @@ function buildTimedBookDraft(targetWords, chapterCount) {
     ];
     return lines.join("\n");
   });
-  return chapters.join("\n");
+  return [
+    `${state.title} - Book Plan`,
+    "",
+    ...sectionPlans,
+    "CHAPTER PLAN",
+    "",
+    chapters.join("\n")
+  ].join("\n");
 }
 
 function timedChapterTitle(index) {
@@ -2609,6 +2730,9 @@ function currentPackage() {
     runtimeSeconds: state.targetDurationSeconds,
     runtime: formatDuration(state.targetDurationSeconds),
     runtimeMinutes: Math.ceil(state.targetDurationSeconds / 60),
+    targetPages: state.targetPages,
+    targetChapters: state.targetChapters,
+    planSections: planSections(),
     targetWordCount: targetWordCount(),
     scriptRuntimeMinutes: estimateMinutes(words),
     voiceEngine: state.voiceMode,
@@ -2825,27 +2949,28 @@ function estimateMinutes(words) {
   return Math.max(1, Math.ceil(words / 155));
 }
 
-function hydrateDurationInputs() {
-  const safeSeconds = clampDuration(state.targetDurationSeconds);
-  state.targetDurationSeconds = safeSeconds;
-  const parts = durationParts(safeSeconds);
-  els.durationHours.value = String(parts.hours);
-  els.durationMinutes.value = String(parts.minutes);
-  els.durationSeconds.value = String(parts.seconds);
+function hydratePlanInputs() {
+  readPlanInputs(true);
+  els.planChaptersInput.value = String(state.targetChapters);
+  els.planPagesInput.value = String(state.targetPages);
 }
 
-function readDurationInputs(normalize = true) {
-  const hours = Number.parseInt(els.durationHours.value, 10) || 0;
-  const minutes = Number.parseInt(els.durationMinutes.value, 10) || 0;
-  const seconds = Number.parseInt(els.durationSeconds.value, 10) || 0;
-  const safeSeconds = clampDuration((hours * 3600) + (minutes * 60) + seconds);
+function readPlanInputs(normalize = true) {
+  const chapters = clamp(Number.parseInt(els.planChaptersInput.value, 10) || state.targetChapters || defaultState.targetChapters, 1, 80);
+  const pages = clamp(Number.parseInt(els.planPagesInput.value, 10) || state.targetPages || defaultState.targetPages, 1, maxPlannedPages);
+  state.targetChapters = Math.round(chapters);
+  state.targetPages = Math.round(pages);
+  updateRuntimeFromPlan();
   if (normalize) {
-    const parts = durationParts(safeSeconds);
-    els.durationHours.value = String(parts.hours);
-    els.durationMinutes.value = String(parts.minutes);
-    els.durationSeconds.value = String(parts.seconds);
+    els.planChaptersInput.value = String(state.targetChapters);
+    els.planPagesInput.value = String(state.targetPages);
   }
-  return safeSeconds;
+}
+
+function updateRuntimeFromPlan() {
+  state.targetPages = clamp(Math.round(Number(state.targetPages) || defaultState.targetPages), 1, maxPlannedPages);
+  state.targetChapters = clamp(Math.round(Number(state.targetChapters) || defaultState.targetChapters), 1, 80);
+  state.targetDurationSeconds = clampDuration(Math.ceil((targetWordCount() / narrationWordsPerMinute) * 60));
 }
 
 function clampDuration(seconds) {
@@ -2876,11 +3001,11 @@ function formatClock(totalSeconds) {
 }
 
 function targetWordCount() {
-  return Math.round((state.targetDurationSeconds / 60) * narrationWordsPerMinute);
+  return Math.round(state.targetPages * wordsPerPage);
 }
 
 function recommendedChapterCount(totalSeconds) {
-  return clamp(Math.round(totalSeconds / (12 * 60)), 1, 15);
+  return state.targetChapters || clamp(Math.round(totalSeconds / (12 * 60)), 1, 80);
 }
 
 function distributeSeconds(totalSeconds, count) {
@@ -2958,11 +3083,24 @@ function loadState() {
       merged.voiceMode = "openai";
       merged.voiceUpgradeVersion = 2;
     }
+    if ((saved.planModelVersion || 0) < 1) {
+      merged.targetLanguage = "English";
+      merged.targetChapters = defaultState.targetChapters;
+      merged.targetPages = defaultState.targetPages;
+      merged.planSections = defaultState.planSections;
+      merged.planModelVersion = 1;
+    }
     merged.languageMode = normalizeLanguageMode(merged.languageMode);
+    if (!popularLanguages.includes(merged.targetLanguage)) {
+      merged.targetLanguage = "English";
+    }
     merged.languageOutput = sanitizeGeneratedBookText(merged.languageOutput);
     merged.manuscript = sanitizeGeneratedBookText(merged.manuscript);
     merged.liveChat = sanitizeLiveChatState(merged.liveChat);
-    merged.targetDurationSeconds = clampDuration(merged.targetDurationSeconds || defaultState.targetDurationSeconds);
+    merged.targetPages = clamp(Math.round(Number(merged.targetPages) || defaultState.targetPages), 1, maxPlannedPages);
+    merged.targetChapters = clamp(Math.round(Number(merged.targetChapters) || defaultState.targetChapters), 1, 80);
+    merged.planSections = String(merged.planSections || defaultState.planSections);
+    merged.targetDurationSeconds = clampDuration(Math.ceil(((merged.targetPages * wordsPerPage) / narrationWordsPerMinute) * 60));
     merged.activeTrackIndex = Math.max(0, Math.round(Number(merged.activeTrackIndex) || 0));
     if (!liveRooms.some((room) => room.id === merged.activeRoomId)) {
       merged.activeRoomId = defaultState.activeRoomId;

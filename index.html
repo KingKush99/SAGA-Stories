@@ -216,25 +216,26 @@
                   <option>Young Adult</option>
                 </select>
               </label>
-              <label class="duration-field">
-                <span>Target Length</span>
-                <div class="duration-picker" aria-label="Audiobook target length">
-                  <input id="durationHours" type="number" min="0" max="3" step="1" inputmode="numeric" aria-label="Hours">
-                  <span>h</span>
-                  <input id="durationMinutes" type="number" min="0" max="59" step="1" inputmode="numeric" aria-label="Minutes">
-                  <span>m</span>
-                  <input id="durationSeconds" type="number" min="0" max="59" step="1" inputmode="numeric" aria-label="Seconds">
-                  <span>s</span>
-                </div>
+              <label>
+                <span>Chapters</span>
+                <input id="planChaptersInput" type="number" min="1" max="80" step="1" inputmode="numeric" aria-label="Planned chapters">
+              </label>
+              <label>
+                <span>Pages</span>
+                <input id="planPagesInput" type="number" min="1" max="338" step="1" inputmode="numeric" aria-label="Planned pages">
               </label>
             </div>
             <dl class="stat-strip">
               <div>
-                <dt>Words</dt>
+                <dt>Script Words</dt>
                 <dd id="wordCount">0</dd>
               </div>
               <div>
-                <dt>Target</dt>
+                <dt>Pages</dt>
+                <dd id="pageCountDisplay">0</dd>
+              </div>
+              <div>
+                <dt>Est. Runtime</dt>
                 <dd id="runtimeEstimate">0m</dd>
               </div>
               <div>
@@ -242,7 +243,7 @@
                 <dd id="targetWordCountDisplay">0</dd>
               </div>
               <div>
-                <dt>Script Est.</dt>
+                <dt>Script Runtime</dt>
                 <dd id="scriptRuntimeEstimate">0m</dd>
               </div>
               <div>
@@ -316,6 +317,10 @@
                   <span>Style Direction</span>
                   <input id="songStyleInput" placeholder="cinematic mystery, calm memoir, full-cast fantasy" autocomplete="off">
                 </label>
+                <label class="full-span">
+                  <span>Plan Sections</span>
+                  <textarea id="planSectionsInput" spellcheck="true" placeholder="Part 1: The hook and setup&#10;Part 2: Rising conflict&#10;Part 3: Climax and resolution"></textarea>
+                </label>
                 <div class="style-chips">
                   <button type="button">calm</button>
                   <button type="button">dramatic</button>
@@ -325,7 +330,18 @@
                 <div class="suno-more-options">
                   <label>
                     <span>Target Language</span>
-                    <input id="targetLanguageInput" placeholder="Any language" autocomplete="off">
+                    <select id="targetLanguageInput">
+                      <option>English</option>
+                      <option>Mandarin Chinese</option>
+                      <option>Hindi</option>
+                      <option>Spanish</option>
+                      <option>French</option>
+                      <option>Arabic</option>
+                      <option>Bengali</option>
+                      <option>Portuguese</option>
+                      <option>Indonesian</option>
+                      <option>Urdu</option>
+                    </select>
                   </label>
                   <label>
                     <span>Mode</span>
