@@ -339,6 +339,8 @@ function cacheElements() {
   els.songProgress = document.getElementById("songProgress");
   els.songPlayerTime = document.getElementById("songPlayerTime");
   els.songPlayerTitle = document.getElementById("songPlayerTitle");
+  els.createCastCard = document.getElementById("createCastCard");
+  els.createCastGrid = document.getElementById("createCastGrid");
   els.searchInput = document.getElementById("searchInput");
   els.searchResults = document.getElementById("searchResults");
   els.chapterList = document.getElementById("chapterList");
@@ -452,12 +454,19 @@ function bindEvents() {
   document.getElementById("translateButton").addEventListener("click", translateManuscript);
   document.getElementById("songButton").addEventListener("click", handleGenerateBookClick);
   document.getElementById("openCastButton").addEventListener("click", () => {
-    switchView("characters");
-    setStatus("Voice cast controls opened");
+    focusCreateCast();
+    setStatus("Cast controls opened in Create");
   });
   document.getElementById("useGeneratedButton").addEventListener("click", useGeneratedOutput);
   document.getElementById("playLanguageOutputButton").addEventListener("click", playLanguageOutput);
   document.getElementById("createTimedBookButton").addEventListener("click", createTimedBook);
+  document.getElementById("createPremiumMatchButton").addEventListener("click", () => {
+    autoAssignVoices();
+    renderCast();
+    renderCreateCast();
+    renderReleasePreview();
+    setStatus("Create cast matched to the best available voices");
+  });
   document.getElementById("detectCharactersButton").addEventListener("click", () => {
     addMissingCharactersFromScript();
     renderAll();
@@ -601,6 +610,7 @@ function renderAll() {
   renderChapters();
   renderLinePreview();
   renderCast();
+  renderCreateCast();
   renderVoiceInventory();
   renderSceneCasting();
   renderReleasePreview();
@@ -900,7 +910,7 @@ function renderStats() {
   els.targetWordCountDisplay.textContent = formatNumber(targetWords);
   els.scriptRuntimeEstimate.textContent = `${minutes}m`;
   els.chapterCount.textContent = String(state.targetChapters);
-  els.castCount.textContent = String(Object.keys(state.cast).length);
+  els.castCount.textContent = String(activeCastCharacters().length);
 }
 
 function renderChapters() {
@@ -1014,12 +1024,14 @@ function renderCast() {
       character.voiceURI = event.target.value;
       persistState();
       renderCast();
+      renderCreateCast();
       renderReleasePreview();
     });
     card.querySelector('[data-field="cloudVoice"]').addEventListener("change", (event) => {
       character.cloudVoice = event.target.value;
       persistState();
       renderCast();
+      renderCreateCast();
       renderReleasePreview();
     });
     card.querySelectorAll('input[type="range"]').forEach((range) => {
@@ -1027,11 +1039,88 @@ function renderCast() {
         character[event.target.dataset.field] = Number(event.target.value);
         persistState();
         renderCast();
+        renderCreateCast();
       });
     });
     els.castGrid.appendChild(card);
   });
   persistState();
+}
+
+function focusCreateCast() {
+  switchView("studio");
+  if (els.createCastCard) {
+    els.createCastCard.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+function renderCreateCast() {
+  if (!els.createCastGrid) return;
+  els.createCastGrid.innerHTML = "";
+  activeCastCharacters().forEach((character, index) => {
+    if (!character.cloudVoice) {
+      character.cloudVoice = defaultHdVoice(character, index);
+    }
+    if ((!character.voiceURI || shouldUpgradeVoice(character.voiceURI)) && voices.length) {
+      character.voiceURI = pickVoice(index, character).voiceURI;
+    }
+    const voice = findVoice(character.voiceURI);
+    const initials = character.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
+    const card = document.createElement("article");
+    card.className = "create-cast-item";
+    card.innerHTML = `
+      <div class="create-cast-head">
+        <span class="avatar" style="background:${character.color}">${escapeHtml(initials)}</span>
+        <span>
+          <strong>${escapeHtml(character.name)}</strong>
+          <small>${escapeHtml(character.role || "Character voice")}</small>
+        </span>
+        <button class="icon-button" type="button" data-action="test" aria-label="Test ${escapeHtml(character.name)}" title="Test voice">
+          <svg class="ico"><use href="#icon-play"></use></svg>
+        </button>
+      </div>
+      <div class="create-cast-controls">
+        <label>
+          <span>Voice ${voice ? `- ${escapeHtml(voiceDescriptor(voice))}` : ""}</span>
+          <select data-field="voiceURI">${voiceOptions(character.voiceURI)}</select>
+        </label>
+        <label>
+          <span>HD Voice</span>
+          <select data-field="cloudVoice">${hdVoiceOptions(character.cloudVoice)}</select>
+        </label>
+      </div>
+    `;
+    card.querySelector('[data-action="test"]').addEventListener("click", () => {
+      speakText(sampleForCharacter(character), character.id);
+    });
+    card.querySelector('[data-field="voiceURI"]').addEventListener("change", (event) => {
+      character.voiceURI = event.target.value;
+      persistState();
+      renderCreateCast();
+      renderCast();
+      renderReleasePreview();
+    });
+    card.querySelector('[data-field="cloudVoice"]').addEventListener("change", (event) => {
+      character.cloudVoice = event.target.value;
+      persistState();
+      renderCreateCast();
+      renderCast();
+      renderReleasePreview();
+    });
+    els.createCastGrid.appendChild(card);
+  });
+}
+
+function activeCastCharacters() {
+  const ids = new Set(["narrator"]);
+  parsedBook.lines.forEach((line) => {
+    if (!isPlanningSpeaker(line.speakerId, line.speakerName)) {
+      ids.add(line.speakerId);
+    }
+  });
+  return Array.from(ids)
+    .map((id) => state.cast[id])
+    .filter(Boolean);
 }
 
 function renderVoiceInventory() {
@@ -1538,19 +1627,18 @@ async function createTimedBook() {
   const chapterCount = state.targetChapters;
   const duration = formatDuration(state.targetDurationSeconds);
   const sections = planSections();
-  setStatus(`Planning ${state.targetPages} pages across ${chapterCount} chapters`);
+  setStatus(`Writing ${state.targetPages} pages across ${chapterCount} chapters`);
   const prompt = [
-    `Create an original ${state.genre} audiobook manuscript plan titled "${state.title}" by ${state.author}.`,
-    `Plan size: ${state.targetPages} pages, ${chapterCount} chapters, about ${targetWords} words at ${wordsPerPage} words per page.`,
-    `Estimated audiobook runtime is ${duration} at ${narrationWordsPerMinute} narrated words per minute. Do not make runtime the control; derive it from words.`,
-    `Use these book sections: ${sections.join("; ")}.`,
-    "For every section, include a clear purpose, chapter range, page range, story beats, and character/audio notes.",
-    "For every chapter, include page target, word target, plot purpose, conflict, scene list, narrator notes, and speaker-labeled sample lines.",
-    "Keep the plan ready for full-cast audiobook production.",
-    "Return only the manuscript plan and sample opening scenes."
+    `Write an original ${state.genre} audiobook manuscript titled "${state.title}" by ${state.author}.`,
+    `Background structure only: ${state.targetPages} pages, ${chapterCount} chapters, about ${targetWords} words at ${wordsPerPage} words per page.`,
+    `Estimated audiobook runtime is ${duration} at ${narrationWordsPerMinute} narrated words per minute; use this only for pacing.`,
+    `Use these sections as private structure: ${sections.join("; ")}.`,
+    "Return only the reader-facing manuscript: title, part/chapter headings, polished narration prose, and natural character dialogue.",
+    "Do not print page targets, purpose labels, scene lists, narrator notes, character notes, production notes, or planning metadata.",
+    "Make it sound like an actual book being read aloud, not a list of properties."
   ].join("\n");
   const fallback = buildTimedBookDraft(targetWords, chapterCount, sections);
-  const result = await runTextGeneration(prompt, fallback);
+  const result = sanitizeGeneratedBookText(await runTextGeneration(prompt, fallback));
   state.manuscript = result;
   els.manuscriptInput.value = result;
   parsedBook = parseManuscript(state.manuscript);
@@ -1558,7 +1646,7 @@ async function createTimedBook() {
   clampActiveChapter();
   persistState();
   renderAll();
-  setStatus(`Created ${chapterCount}-chapter, ${state.targetPages}-page book plan`);
+  setStatus(`Created ${chapterCount}-chapter, ${state.targetPages}-page manuscript`);
 }
 
 async function handleGenerateBookClick() {
@@ -1604,10 +1692,11 @@ async function generateBookOutput() {
   const prompt = [
     `Create an original audiobook draft in ${language}.`,
     `Style: ${style}.`,
-    `Plan around ${state.targetPages} pages and ${state.targetChapters} chapters, with sections: ${planSections().join("; ")}.`,
-    `Estimated runtime should be derived from roughly ${formatNumber(targetWordCount())} words, not manually chosen.`,
-    "Include title, section plan, chapter beats, narrator direction, character notes, page targets, and short production notes.",
-    "Keep it clear, emotionally specific, and suitable for full-cast audiobook production.",
+    `Use this as private structure: ${state.targetPages} pages, ${state.targetChapters} chapters, sections: ${planSections().join("; ")}.`,
+    `Pace it for roughly ${formatNumber(targetWordCount())} words, with runtime derived from words.`,
+    "Return only the reader-facing manuscript: title, part/chapter headings, narration prose, and natural dialogue.",
+    "Do not include page targets, purposes, scene lists, narrator direction, character notes, production notes, or planning labels.",
+    "Make it read like an actual audiobook manuscript.",
     "",
     state.manuscript
   ].join("\n");
@@ -1780,6 +1869,7 @@ function bookPlaybackText() {
     .replace(/^SECTION\b.*$/gim, "")
     .replace(/^PAGE TARGET:.*$/gim, "")
     .replace(/^BOOK PLAN:.*$/gim, "")
+    .replace(/^(CHAPTER PURPOSE|PURPOSE|SCENES|AUDIO NOTES|CHARACTER NOTES|PRODUCTION NOTES|NARRATOR DIRECTION|CHAPTER BEATS|SECTION PLAN):.*$/gim, "")
     .replace(/\s+/g, " ")
     .trim();
   return clean.slice(0, 1800) || "Audiobook preview is ready.";
@@ -1962,13 +2052,14 @@ function sanitizeGeneratedBookText(text) {
     .replace(/\bsong\b/g, "audiobook")
     .replace(/Performance notes:/gi, "Production notes:")
     .split(/\r?\n/);
+  const planningLine = /^(SECTION\s+\d+|BOOK PLAN|BOOK TARGET|BOOK WORD TARGET|BOOK CHAPTERS|ESTIMATED AUDIOBOOK RUNTIME|PAGE TARGET|PAGE PACE|NARRATION PACE|CHAPTER PURPOSE|PURPOSE|SCENES|AUDIO NOTES|CHARACTER NOTES|PRODUCTION NOTES|NARRATOR DIRECTION|CHAPTER BEATS|SECTION PLAN|STYLE):/i;
   if (lines[0]) {
     lines[0] = lines[0]
       .replace(/\s+-\s+(.+?)\s+Narration Style:.*$/i, " - $1 Audiobook Draft")
       .replace(/\s+-\s+(.+?)\s+Audiobook Style:.*$/i, " - $1 Audiobook Draft")
       .replace(/\s+-\s+(.+?)\s+Audiobook$/i, " - $1 Audiobook Draft");
   }
-  return lines.join("\n");
+  return lines.filter((line) => !planningLine.test(line.trim())).join("\n").trim();
 }
 
 function sanitizeLiveChatMessages(messages) {
@@ -2046,22 +2137,7 @@ function buildOfflineTranslation(language) {
 }
 
 function buildOfflineBook(language, style) {
-  const title = state.title || "Untitled";
-  return [
-    `${title} - ${language} Audiobook Draft`,
-    `Style: ${style}`,
-    "",
-    "Chapter 1",
-    "NARRATOR: The opening scene begins with a clear hook and a focused sense of place.",
-    "",
-    "Character Notes",
-    "Lead voice: grounded, emotionally direct, and easy to distinguish from the narrator.",
-    "",
-    "Production Notes",
-    "Keep chapter transitions short, natural, and easy to follow.",
-    "",
-    `[Production notes: Expand this fully into ${language} with the AI generator when an HD API key is entered.]`
-  ].join("\n");
+  return buildTimedBookDraft(targetWordCount(), state.targetChapters || defaultState.targetChapters, planSections(), language, style);
 }
 
 function planSections() {
@@ -2073,56 +2149,87 @@ function planSections() {
   return sections.length ? sections.slice(0, 12) : ["Setup", "Rising conflict", "Resolution"];
 }
 
-function buildTimedBookDraft(targetWords, chapterCount, sections = planSections()) {
-  const duration = formatDuration(state.targetDurationSeconds);
-  const chapterSeconds = distributeSeconds(state.targetDurationSeconds, chapterCount);
-  const wordsPerChapter = distributeWords(targetWords, chapterCount);
-  const pagesPerChapter = distributeWords(state.targetPages, chapterCount);
-  const sectionPlans = sections.map((section, index) => {
-    const startChapter = Math.floor((index * chapterCount) / sections.length) + 1;
-    const endChapter = Math.floor(((index + 1) * chapterCount) / sections.length);
-    const startPage = Math.floor((index * state.targetPages) / sections.length) + 1;
-    const endPage = Math.floor(((index + 1) * state.targetPages) / sections.length);
+function buildTimedBookDraft(targetWords, chapterCount, sections = planSections(), language = "English", style = state.songStyle) {
+  const chapters = Array.from({ length: chapterCount }, (_, index) => {
+    const chapterNumber = index + 1;
+    const chapterTitle = timedChapterTitle(chapterNumber);
+    const section = sections[Math.min(sections.length - 1, Math.floor((index / chapterCount) * sections.length))] || sections[0];
+    const beat = storyBeatForChapter(chapterNumber, section, style);
     return [
-      `SECTION ${index + 1}: ${section}`,
-      `CHAPTER RANGE: Chapters ${startChapter}-${Math.max(startChapter, endChapter)}`,
-      `PAGE RANGE: Pages ${startPage}-${Math.max(startPage, endPage)}`,
-      `PURPOSE: Move the story through ${section.toLowerCase()} while keeping the audiobook clear and easy to follow.`,
-      `AUDIO NOTES: Mark major character entrances, narrator emphasis, and chapter-ending hooks.`,
+      `Chapter ${chapterNumber}: ${chapterTitle}`,
+      `NARRATOR: ${beat.opening}`,
+      `NARRATOR: ${beat.detail}`,
+      `MARA VOSS: "${beat.mara}"`,
+      `CAPTAIN ROOK: "${beat.rook}"`,
+      `NARRATOR: ${beat.turn}`,
+      `THE ARCHIVIST: "${beat.archivist}"`,
+      `NARRATOR: ${beat.close}`,
       ""
     ].join("\n");
   });
-  const chapters = chapterSeconds.map((seconds, index) => {
-    const chapterNumber = index + 1;
-    const chapterTitle = timedChapterTitle(chapterNumber);
-    const chapterPages = pagesPerChapter[index];
-    const lines = [
-      `Chapter ${chapterNumber}: ${chapterTitle}`,
-      ...(index === 0 ? [
-        `BOOK PLAN: ${formatNumber(state.targetPages)} pages, ${chapterCount} chapters, about ${formatNumber(targetWords)} words`,
-        `ESTIMATED AUDIOBOOK RUNTIME: ${duration}`,
-        `PAGE PACE: ${wordsPerPage} words per page`,
-        `NARRATION PACE: ${narrationWordsPerMinute} words per minute`
-      ] : []),
-      `PAGE TARGET: ${chapterPages} pages | ${formatNumber(wordsPerChapter[index])} words | estimated ${formatClock(seconds)} audio`,
-      `CHAPTER PURPOSE: Advance one major choice, reveal one new detail, and end with a clear reason to continue.`,
-      `SCENES: Opening image; character decision; complication; turn; closing hook.`,
-      `NARRATOR: This chapter should sound polished, audible, and paced for long-form listening.`,
-      `MARA VOSS: We need the story to land exactly on time, not one second loose.`,
-      `CAPTAIN ROOK: Then every scene needs a job, a beat, and a clean exit.`,
-      `THE ARCHIVIST: The final manuscript should expand this outline to ${formatNumber(wordsPerChapter[index])} words before recording.`,
-      ""
-    ];
-    return lines.join("\n");
-  });
   return [
-    `${state.title} - Book Plan`,
-    "",
-    ...sectionPlans,
-    "CHAPTER PLAN",
+    `${state.title} - ${language} Audiobook Manuscript`,
     "",
     chapters.join("\n")
   ].join("\n");
+}
+
+function storyBeatForChapter(chapterNumber, section, style = "") {
+  const atmosphere = String(style || "cinematic audiobook").toLowerCase();
+  const isCalm = atmosphere.includes("calm") || atmosphere.includes("sleep");
+  const openings = [
+    "Rain moved across the glass roof in careful silver lines, and Mara Voss listened until the old library seemed to breathe with it.",
+    "By morning, the map had changed again, adding a street that none of the city records admitted had ever existed.",
+    "The first door stood behind a shelf of blank books, its brass handle warm from a hand that had not touched it in a hundred years.",
+    "Every voice in the stacks went quiet when Captain Rook lifted the lantern and found footprints crossing the dust ahead of them.",
+    "The key did not look valuable until it began to hum, low and patient, against Mara's palm.",
+    "Below the library, a city of glass waited in darkness, its towers reflecting stars that were not in the sky.",
+    "The orchard appeared where the map folded in on itself, each tree bearing fruit made of memory and light.",
+    "The Archivist offered them a bargain in a room where every wall was listening.",
+    "At midnight, the story rewrote its own ending, and Mara saw her name vanish from the final page.",
+    "The final reading began with no audience, no applause, and every locked door in the library opening at once.",
+    "What the library remembered was not the war or the treasure, but the promise that had been broken between friends.",
+    "When the door stayed open, Mara understood that some stories were not meant to be escaped."
+  ];
+  const details = [
+    "The air smelled of wet stone, candle smoke, and paper so old it had learned to keep secrets.",
+    "A thin gold line crawled across the parchment, stopping at a drawn fountain that flickered like real water.",
+    "Rook checked the corridor behind them twice, but the only sound was the soft rearranging of shelves.",
+    "Mara pressed her fingertips to the margin and felt a heartbeat answer from inside the page.",
+    "The shadows around the reading desks lengthened, not away from the lamp, but toward it.",
+    "Somewhere under their feet, bells rang once, then again, counting down to a choice no one had explained.",
+    "The fruit shone with tiny scenes inside: a child's laugh, a burned letter, a crown sinking into black water.",
+    "The Archivist's robe made no sound, though the floor was scattered with glass leaves.",
+    "Each revision stole a memory from the room, leaving only the feeling that something precious had been there.",
+    "Mara opened the book and saw the words rise like breath in winter.",
+    "Rook lowered his sword because even he could tell this was not a fight that steel could win.",
+    "A soft wind passed through the library, turning every page to the same unfinished sentence."
+  ];
+  const closes = [
+    "Mara stepped forward before fear could teach her to stay still.",
+    "The map brightened, and the impossible street began to draw itself beneath their feet.",
+    "The handle turned on its own, inviting them into the dark.",
+    "The footprints stopped at the table where Mara had left the living book open.",
+    "The key chose a lock they had not seen, and the wall split like an eye waking.",
+    "The city below answered with a thousand lights.",
+    "Mara reached for the nearest glass apple and heard her mother's voice inside it.",
+    "Rook moved closer to Mara, and for once he had no joke ready.",
+    "The final page waited, clean and white, daring her to speak first.",
+    "Every open door led to the same room, and in that room the lost city listened.",
+    "The broken promise had a voice, and it knew Mara by name.",
+    "Behind them, the library exhaled, and the story began again."
+  ];
+  const index = (chapterNumber - 1) % openings.length;
+  const softer = isCalm ? "softly" : "clearly";
+  return {
+    opening: openings[index],
+    detail: details[index],
+    mara: chapterNumber % 3 === 0 ? "If this place wants a witness, it can have one. But it does not get to choose what I remember." : "I can feel the story pulling at us. It is not a trap, not exactly, but it is hungry.",
+    rook: chapterNumber % 2 === 0 ? "Hungry buildings are exactly the kind I prefer to leave behind." : "Stay close. If the shelves start whispering your name, let them finish before you answer.",
+    turn: `The ${section.toLowerCase()} of the journey settled around them ${softer}, shaping every step into a decision they could not take back.`,
+    archivist: chapterNumber % 4 === 0 ? "A book only lies when its reader is afraid of the truth." : "Every locked story asks the same question: what are you willing to hear?",
+    close: closes[index]
+  };
 }
 
 function timedChapterTitle(index) {
@@ -2176,7 +2283,9 @@ function parseManuscript(text) {
 }
 
 function addMissingCharactersFromScript(shouldPersist = true) {
+  removePlanningCastEntries(state.cast);
   parsedBook.lines.forEach((line) => {
+    if (isPlanningSpeaker(line.speakerId, line.speakerName)) return;
     if (!state.cast[line.speakerId]) {
       const index = Object.keys(state.cast).length;
       state.cast[line.speakerId] = {
@@ -2192,6 +2301,39 @@ function addMissingCharactersFromScript(shouldPersist = true) {
     }
   });
   if (shouldPersist) persistState();
+}
+
+function isPlanningSpeaker(id, name = "") {
+  const value = `${id || ""} ${name || ""}`.toLowerCase();
+  return [
+    "book-plan",
+    "book-target",
+    "book-word-target",
+    "book-chapters",
+    "estimated-audiobook-runtime",
+    "page-target",
+    "page-pace",
+    "narration-pace",
+    "chapter-purpose",
+    "purpose",
+    "scenes",
+    "audio-notes",
+    "character-notes",
+    "production-notes",
+    "narrator-direction",
+    "chapter-beats",
+    "section-plan",
+    "style"
+  ].some((term) => value.includes(term));
+}
+
+function removePlanningCastEntries(cast) {
+  Object.keys(cast || {}).forEach((id) => {
+    const character = cast[id];
+    if (isPlanningSpeaker(id, character?.name)) {
+      delete cast[id];
+    }
+  });
 }
 
 function addCharacterFromForm() {
@@ -3124,6 +3266,7 @@ function loadState() {
         character.cloudVoice = defaultHdVoice(character, index);
       }
     });
+    removePlanningCastEntries(merged.cast);
     return merged;
   } catch {
     return clone(defaultState);
