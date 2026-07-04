@@ -439,7 +439,9 @@ function bindEvents() {
       closeProfileEditor();
       closeMessages();
       hidePersonContextMenu();
+      return;
     }
+    handleGlobalPlaybackKey(event);
   });
 
   els.previewButton.addEventListener("click", () => speakCurrentChapter(10));
@@ -641,6 +643,46 @@ function switchView(viewName) {
   }
   closeAppMenu();
   hidePersonContextMenu();
+}
+
+function handleGlobalPlaybackKey(event) {
+  const isPlaybackKey = event.code === "Space" || event.key === " " || event.key === "Spacebar" || event.key === "Enter";
+  if (!isPlaybackKey || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  if (isTypingTarget(event.target) || isNativeActivationTarget(event.target) || isBlockingOverlayOpen()) return;
+  event.preventDefault();
+  toggleKeyboardPlayback();
+}
+
+function isTypingTarget(target) {
+  const element = target instanceof Element ? target : null;
+  if (!element) return false;
+  return Boolean(element.closest("input, textarea, select, [contenteditable='true']"));
+}
+
+function isNativeActivationTarget(target) {
+  const element = target instanceof Element ? target : null;
+  if (!element) return false;
+  return Boolean(element.closest("button, a, summary, label, input, textarea, select"));
+}
+
+function isBlockingOverlayOpen() {
+  return !els.themeModal.hidden || !els.profileEditModal.hidden || !els.messagesDrawer.hidden;
+}
+
+function toggleKeyboardPlayback() {
+  if (liveAudioPlaying) {
+    toggleLiveAudiobookPlayback();
+    return;
+  }
+  if (songProgressTimer) {
+    toggleSongPlayback();
+    return;
+  }
+  if (els.views.live?.classList.contains("is-active") && state.enteredRoomId) {
+    toggleLiveAudiobookPlayback();
+    return;
+  }
+  toggleSongPlayback();
 }
 
 function toggleAppMenu(event) {

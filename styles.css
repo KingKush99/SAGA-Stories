@@ -2,9 +2,9 @@
 
 * { box-sizing: border-box; }
 
-html { min-width: 320px; background: var(--bg); }
+html { min-width: 320px; min-height: 100%; overflow: hidden; background: var(--bg); }
 
-body { margin: 0px; min-height: 100vh; color: var(--text); background: radial-gradient(circle at left top, rgba(84, 182, 166, 0.11), transparent 28rem), linear-gradient(135deg, rgb(12, 13, 14), rgb(23, 21, 19) 48%, rgb(16, 17, 18)); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+body { margin: 0px; min-height: 100vh; overflow: hidden; color: var(--text); background: radial-gradient(circle at left top, rgba(84, 182, 166, 0.11), transparent 28rem), linear-gradient(135deg, rgb(12, 13, 14), rgb(23, 21, 19) 48%, rgb(16, 17, 18)); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 
 body[data-theme="waveform"] { background: repeating-linear-gradient(90deg, rgba(216, 169, 76, 0.08) 0px, rgba(216, 169, 76, 0.08) 1px, transparent 1px, transparent 2.3rem), radial-gradient(circle at 74% 10%, rgba(216, 169, 76, 0.16), transparent 24rem), linear-gradient(135deg, rgb(16, 17, 18), rgb(25, 23, 21) 48%, rgb(13, 14, 15)); }
 
@@ -22,7 +22,7 @@ button { color: inherit; }
 
 .ico { width: 1rem; height: 1rem; fill: none; stroke: currentcolor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
 
-.app-shell { display: block; min-height: 100vh; }
+.app-shell { display: block; min-height: 100dvh; }
 
 .side-rail {
   position: fixed;
@@ -98,7 +98,7 @@ button { color: inherit; }
   color: #ffffff;
 }
 
-.workspace { width: min(100%, 1540px); margin: 0px auto; padding: 1.2rem clamp(1rem, 2.4vw, 2rem) 6.8rem; }
+.workspace { width: min(100%, 1540px); height: 100dvh; margin: 0px auto; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scroll-padding: 1rem 0 7.5rem; padding: 1.2rem clamp(1rem, 2.4vw, 2rem) calc(7.6rem + env(safe-area-inset-bottom)); }
 
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 
@@ -464,7 +464,7 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
 
 .track-slider-card span { margin-top: 0.2rem; color: var(--muted); font-size: 0.82rem; font-weight: 750; }
 
-.live-room-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 0.85rem; }
+.live-room-grid { display: grid; grid-template-columns: repeat(2, minmax(0px, 1fr)); gap: 0.85rem; }
 
 .live-room-card { --accent: var(--teal); --room-bg: linear-gradient(145deg, #111a1d, #33545a, #111112); position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: space-between; min-height: 25rem; aspect-ratio: 9 / 14; overflow: hidden; padding: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; background: var(--room-bg); box-shadow: rgba(0, 0, 0, 0.22) 0px 18px 42px; }
 
@@ -735,7 +735,7 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
 }
 
 @media (max-width: 430px) {
-  .workspace { padding-inline: 0.75rem; padding-bottom: 6.8rem; }
+  .workspace { padding-inline: 0.75rem; padding-bottom: calc(7.6rem + env(safe-area-inset-bottom)); }
   .profile-button, .nav-button { width: 3.45rem; height: 3.45rem; }
   .live-room-card { min-height: 17.5rem; }
   .live-room-bottom p { display: none; }
@@ -746,4 +746,10 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
   .theme-picker, .message-tabs { grid-template-columns: 1fr; }
   .top-profile-button { width: 2.75rem; height: 2.75rem; }
   .range-grid, .stat-strip { grid-template-columns: 1fr; }
+}
+
+@media (max-height: 620px) {
+  .workspace { padding-top: 0.75rem; }
+  .project-banner, .banner-content { min-height: 16rem; }
+  .audible-player { min-height: 28rem; }
 }
