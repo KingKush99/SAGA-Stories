@@ -650,7 +650,7 @@ function switchView(viewName) {
     if (view) view.classList.toggle("is-active", key === viewName);
   });
   if (els.projectBanner) {
-    els.projectBanner.hidden = viewName === "profile";
+    els.projectBanner.hidden = viewName !== "studio";
   }
   if (els.stopButton && els.previewButton) {
     const hidePlaybackActions = viewName === "profile";
