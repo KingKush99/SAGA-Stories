@@ -194,42 +194,35 @@
           </section>
         </div>
 
-        <section class="project-banner" aria-label="Current audiobook project">
-          <img src="assets/studio-cover.png" alt="Audiobook production studio with an open book and microphone">
-          <div class="banner-shade"></div>
-          <div class="banner-content">
-            <div class="project-fields">
-              <label>
-                <span>Title</span>
-                <input id="bookTitle" autocomplete="off">
-              </label>
-              <label>
-                <span>Author</span>
-                <input id="authorName" autocomplete="off">
-              </label>
-              <label>
-                <span>Genre</span>
-                <select id="genreSelect">
-                  <option>Fantasy</option>
-                  <option>Mystery</option>
-                  <option>Thriller</option>
-                  <option>Romance</option>
-                  <option>Science Fiction</option>
-                  <option>Memoir</option>
-                  <option>Business</option>
-                  <option>Young Adult</option>
-                </select>
-              </label>
-              <label>
-                <span>Chapters</span>
-                <input id="planChaptersInput" type="number" min="1" max="80" step="1" inputmode="numeric" aria-label="Planned chapters">
-              </label>
-              <label>
-                <span>Pages</span>
-                <input id="planPagesInput" type="number" min="1" max="338" step="1" inputmode="numeric" aria-label="Planned pages">
-              </label>
+        <section class="view is-active" id="studioView" aria-labelledby="studioHeading">
+          <section class="create-editor-shell">
+            <div class="create-editor-heading">
+              <div>
+                <p class="eyebrow">Create</p>
+                <h2 id="studioHeading">Book Editor</h2>
+              </div>
+              <div class="create-editor-actions">
+                <button class="ghost-button" id="importManuscriptButton" type="button">
+                  <svg class="ico"><use href="#icon-upload"></use></svg>
+                  Import
+                </button>
+                <input id="manuscriptImportInput" type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden>
+                <button class="ghost-button" id="dictateButton" type="button">
+                  <svg class="ico"><use href="#icon-mic"></use></svg>
+                  Dictate
+                </button>
+                <button class="icon-text-button" id="saveProjectButton" type="button">
+                  <svg class="ico"><use href="#icon-save"></use></svg>
+                  Save
+                </button>
+                <button class="primary-button" id="songButton" type="button">
+                  <svg class="ico"><use href="#icon-wand"></use></svg>
+                  Generate Book
+                </button>
+              </div>
             </div>
-            <dl class="stat-strip">
+
+            <dl class="stat-strip editor-stat-strip">
               <div>
                 <dt>Script Words</dt>
                 <dd id="wordCount">0</dd>
@@ -259,81 +252,46 @@
                 <dd id="castCount">0</dd>
               </div>
             </dl>
-          </div>
-        </section>
 
-        <section class="view is-active" id="studioView" aria-labelledby="studioHeading">
-          <section class="tool-panel language-panel suno-panel">
-            <div class="suno-top">
-              <div class="suno-credit-pill">
-                <svg class="ico"><use href="#icon-mic"></use></svg>
-                Studio
-              </div>
-              <div class="suno-tabs" aria-label="Creation mode">
-                <button class="suno-tab" type="button">Draft</button>
-                <button class="suno-tab is-active" type="button">Voices</button>
-                <button class="suno-tab" type="button">Master</button>
-              </div>
-              <div class="suno-version">Book Mode</div>
-            </div>
-            <div class="suno-add-strip">
-              <button type="button"><span>+</span> Manuscript</button>
-              <button type="button"><span>+</span> Voice <strong>New</strong></button>
-              <button type="button"><span>+</span> Inspiration</button>
-            </div>
-            <div class="suno-grid">
-              <section class="suno-card lyrics-card">
-                <div class="suno-card-head">
-                  <h2>Book Draft</h2>
-                  <div class="suno-icon-row">
-                    <button class="icon-button" id="translateButton" type="button" aria-label="Translate" title="Translate">
-                      <svg class="ico"><use href="#icon-wand"></use></svg>
-                    </button>
-                    <button class="icon-button" id="useGeneratedButton" type="button" aria-label="Use output" title="Use output">
-                      <svg class="ico"><use href="#icon-save"></use></svg>
-                    </button>
-                    <button class="icon-button" id="playLanguageOutputButton" type="button" aria-label="Play voice output" title="Play voice output">
-                      <svg class="ico"><use href="#icon-play"></use></svg>
-                    </button>
-                  </div>
+            <div class="editor-workspace">
+              <section class="tool-panel manuscript-panel book-editor-panel">
+                <div>
+                  <p class="eyebrow">Text Editor</p>
+                  <h3>Manuscript</h3>
                 </div>
-                <textarea id="languageOutput" spellcheck="true" placeholder="Chapter 1&#10;&#10;Narrator: Open with the strongest scene.&#10;&#10;Character: Keep the pacing clear."></textarea>
-                <div class="suno-card-actions">
-                  <button class="ghost-button" type="button" id="openCastButton">
-                    <svg class="ico"><use href="#icon-users"></use></svg>
-                    Cast
-                  </button>
-                  <button class="primary-button" id="songButton" type="button">
-                    <svg class="ico"><use href="#icon-wand"></use></svg>
-                    Generate Book
-                  </button>
-                </div>
-              </section>
 
-              <section class="suno-card styles-card">
-                <div class="suno-card-head">
-                  <h2>Narration Style</h2>
-                  <button class="icon-button" id="createTimedBookButton" type="button" aria-label="Create book" title="Create book">
-                    <svg class="ico"><use href="#icon-book"></use></svg>
-                  </button>
-                </div>
-                <label>
-                  <span>Style Direction</span>
-                  <input id="songStyleInput" placeholder="cinematic mystery, calm memoir, full-cast fantasy" autocomplete="off">
-                </label>
-                <label class="full-span">
-                  <span>Plan Sections</span>
-                  <textarea id="planSectionsInput" spellcheck="true" placeholder="Part 1: The hook and setup&#10;Part 2: Rising conflict&#10;Part 3: Climax and resolution"></textarea>
-                </label>
-                <div class="style-chips">
-                  <button type="button">calm</button>
-                  <button type="button">dramatic</button>
-                  <button type="button">full cast</button>
-                  <button type="button">cinematic</button>
-                </div>
-                <div class="suno-more-options">
+                <div class="editor-field-grid">
                   <label>
-                    <span>Target Language</span>
+                    <span>Title</span>
+                    <input id="bookTitle" autocomplete="off">
+                  </label>
+                  <label>
+                    <span>Author</span>
+                    <input id="authorName" autocomplete="off">
+                  </label>
+                  <label>
+                    <span>Genre</span>
+                    <select id="genreSelect">
+                      <option>Fantasy</option>
+                      <option>Mystery</option>
+                      <option>Thriller</option>
+                      <option>Romance</option>
+                      <option>Science Fiction</option>
+                      <option>Memoir</option>
+                      <option>Business</option>
+                      <option>Young Adult</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Chapters</span>
+                    <input id="planChaptersInput" type="number" min="1" max="80" step="1" inputmode="numeric" aria-label="Planned chapters">
+                  </label>
+                  <label>
+                    <span>Pages</span>
+                    <input id="planPagesInput" type="number" min="1" max="338" step="1" inputmode="numeric" aria-label="Planned pages">
+                  </label>
+                  <label>
+                    <span>Language</span>
                     <select id="targetLanguageInput">
                       <option>English</option>
                       <option>Mandarin Chinese</option>
@@ -347,14 +305,27 @@
                       <option>Urdu</option>
                     </select>
                   </label>
+                </div>
+
+                <div class="editor-planning-grid">
                   <label>
-                    <span>Mode</span>
-                    <select id="languageModeSelect">
-                      <option value="translate">Translate audiobook</option>
-                      <option value="book">Generate audiobook</option>
-                      <option value="both">Translate and generate book</option>
-                    </select>
+                    <span>Themes, Style, and Tone</span>
+                    <input id="songStyleInput" placeholder="cinematic mystery, calm memoir, full-cast fantasy" autocomplete="off">
                   </label>
+                  <label>
+                    <span>Outline</span>
+                    <textarea id="planSectionsInput" spellcheck="true" placeholder="Part 1: The hook and setup&#10;Part 2: Rising conflict&#10;Part 3: Climax and resolution"></textarea>
+                  </label>
+                </div>
+
+                <div class="style-chips" aria-label="Style presets">
+                  <button type="button">calm</button>
+                  <button type="button">dramatic</button>
+                  <button type="button">full cast</button>
+                  <button type="button">cinematic</button>
+                </div>
+
+                <div class="editor-range-grid">
                   <label>
                     <span>Weirdness <b id="weirdnessValue">10%</b></span>
                     <input id="weirdnessRange" type="range" min="0" max="100" value="10">
@@ -364,75 +335,131 @@
                     <input id="styleInfluenceRange" type="range" min="0" max="100" value="80">
                   </label>
                 </div>
+
+                <textarea id="manuscriptInput" spellcheck="true"></textarea>
               </section>
-            </div>
-            <section class="suno-card create-cast-card" id="createCastCard">
-              <div class="suno-card-head">
-                <h2>Cast</h2>
-                <button class="icon-text-button" id="createPremiumMatchButton" type="button">
-                  <svg class="ico"><use href="#icon-wand"></use></svg>
-                  Studio Match
-                </button>
-              </div>
-              <div class="create-cast-grid" id="createCastGrid"></div>
-            </section>
-            <section class="song-player" aria-label="Audiobook playback">
-              <button class="primary-button" id="songPlayPauseButton" type="button">
-                <svg class="ico"><use href="#icon-play"></use></svg>
-                Play Book
-              </button>
-              <div class="song-player-main">
-                <strong id="songPlayerTitle">Generated audiobook draft</strong>
-                <input id="songProgress" type="range" min="0" max="100" value="0" aria-label="Audiobook progress">
-              </div>
-              <span id="songPlayerTime">0:00</span>
-            </section>
-          </section>
 
-          <div class="view-grid studio-grid">
-            <section class="tool-panel manuscript-panel">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Source</p>
-                  <h2 id="studioHeading">Manuscript</h2>
+              <aside class="tool-panel voice-studio-panel">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Voice Studio</p>
+                    <h3>Cast and Sound</h3>
+                  </div>
+                  <button class="icon-text-button" id="createPremiumMatchButton" type="button">
+                    <svg class="ico"><use href="#icon-wand"></use></svg>
+                    Studio Match
+                  </button>
                 </div>
-                <button class="icon-text-button" id="saveProjectButton" type="button">
-                  <svg class="ico"><use href="#icon-save"></use></svg>
-                  Save
-                </button>
-              </div>
-              <textarea id="manuscriptInput" spellcheck="true"></textarea>
-            </section>
+                <div class="voice-console">
+                  <label>
+                    <span>Voice Engine</span>
+                    <select id="voiceModeSelect">
+                      <option value="openai">OpenAI HD</option>
+                      <option value="studio">Studio Neural</option>
+                      <option value="neural">Cloud/Neural Only</option>
+                      <option value="browser">Browser Fallback</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>HD API Key</span>
+                    <input id="ttsApiKey" type="password" placeholder="Only stored for this session" autocomplete="off">
+                  </label>
+                  <label>
+                    <span>Audio Quality</span>
+                    <select id="audioQualitySelect">
+                      <option value="wav">Ultra HD WAV</option>
+                      <option value="mp3">HD MP3</option>
+                      <option value="opus">Streaming Opus</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Mastering</span>
+                    <select id="masteringSelect">
+                      <option value="audiobook">Audiobook Master</option>
+                      <option value="warm">Warm Narration</option>
+                      <option value="bright">Bright Dialogue</option>
+                      <option value="raw">Raw</option>
+                    </select>
+                  </label>
+                  <div class="voice-inventory" id="voiceInventory">Scanning voices...</div>
+                </div>
+                <div class="add-character-row">
+                  <label>
+                    <span>Name</span>
+                    <input id="newCharacterName" placeholder="Character name" autocomplete="off">
+                  </label>
+                  <label>
+                    <span>Role</span>
+                    <input id="newCharacterRole" placeholder="Role" autocomplete="off">
+                  </label>
+                  <button class="primary-button" id="addCharacterButton" type="button">Add</button>
+                </div>
+                <div class="own-voice-row">
+                  <button class="ghost-button" id="addOwnVoiceButton" type="button">
+                    <svg class="ico"><use href="#icon-mic"></use></svg>
+                    Add My Voice
+                  </button>
+                  <input id="ownVoiceInput" type="file" accept="audio/*" hidden>
+                </div>
+                <section class="create-cast-card" id="createCastCard">
+                  <div class="create-cast-grid" id="createCastGrid"></div>
+                </section>
+              </aside>
+            </div>
 
-            <section class="tool-panel timeline-panel">
+            <section class="tool-panel preview-editor-panel">
               <div class="panel-heading">
                 <div>
-                  <p class="eyebrow">Production</p>
-                  <h2>Chapter Timeline</h2>
+                  <p class="eyebrow">Preview</p>
+                  <h3>Audiobook Timeline</h3>
                 </div>
                 <button class="icon-button" id="detectCharactersButton" type="button" aria-label="Detect characters" title="Detect characters">
-                  <svg class="ico"><use href="#icon-wand"></use></svg>
+                  <svg class="ico"><use href="#icon-users"></use></svg>
                 </button>
               </div>
-              <div class="chapter-list" id="chapterList"></div>
-              <div class="transport-card">
-                <div>
-                  <p class="small-label">Active Take</p>
-                  <strong id="activeTakeTitle">Opening scene</strong>
+              <section class="song-player" aria-label="Audiobook playback">
+                <button class="primary-button" id="songPlayPauseButton" type="button">
+                  <svg class="ico"><use href="#icon-play"></use></svg>
+                  Play Book
+                </button>
+                <div class="song-player-main">
+                  <strong id="songPlayerTitle">Generated audiobook draft</strong>
+                  <input id="songProgress" type="range" min="0" max="100" value="0" aria-label="Audiobook progress">
                 </div>
-                <div class="transport-buttons">
-                  <button class="icon-text-button" id="playSelectionButton" type="button">
-                    <svg class="ico"><use href="#icon-play"></use></svg>
-                    Scene
-                  </button>
-                  <button class="icon-button" id="stopInlineButton" type="button" aria-label="Stop playback" title="Stop playback">
-                    <svg class="ico"><use href="#icon-stop"></use></svg>
-                  </button>
+                <span id="songPlayerTime">0:00</span>
+              </section>
+              <div class="preview-scroll-grid">
+                <div class="chapter-list" id="chapterList"></div>
+                <div>
+                  <div class="transport-card">
+                    <div>
+                      <p class="small-label">Active Take</p>
+                      <strong id="activeTakeTitle">Opening scene</strong>
+                    </div>
+                    <div class="transport-buttons">
+                      <button class="icon-text-button" id="playSelectionButton" type="button">
+                        <svg class="ico"><use href="#icon-play"></use></svg>
+                        Scene
+                      </button>
+                      <button class="icon-button" id="stopInlineButton" type="button" aria-label="Stop playback" title="Stop playback">
+                        <svg class="ico"><use href="#icon-stop"></use></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="line-preview" id="linePreview"></div>
                 </div>
               </div>
-              <div class="line-preview" id="linePreview"></div>
             </section>
-          </div>
+
+            <div hidden>
+              <select id="languageModeSelect">
+                <option value="book">Generate audiobook</option>
+                <option value="translate">Translate audiobook</option>
+                <option value="both">Translate and generate book</option>
+              </select>
+              <textarea id="languageOutput"></textarea>
+            </div>
+          </section>
         </section>
 
         <section class="view" id="charactersView" aria-labelledby="charactersHeading">
@@ -447,50 +474,6 @@
                   <svg class="ico"><use href="#icon-wand"></use></svg>
                   Studio Match
                 </button>
-              </div>
-              <div class="voice-console">
-                <label>
-                  <span>Voice Engine</span>
-                  <select id="voiceModeSelect">
-                    <option value="openai">OpenAI HD</option>
-                    <option value="studio">Studio Neural</option>
-                    <option value="neural">Cloud/Neural Only</option>
-                    <option value="browser">Browser Fallback</option>
-                  </select>
-                </label>
-                <label>
-                  <span>HD API Key</span>
-                  <input id="ttsApiKey" type="password" placeholder="Only stored for this session" autocomplete="off">
-                </label>
-                <label>
-                  <span>Audio Quality</span>
-                  <select id="audioQualitySelect">
-                    <option value="wav">Ultra HD WAV</option>
-                    <option value="mp3">HD MP3</option>
-                    <option value="opus">Streaming Opus</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Mastering</span>
-                  <select id="masteringSelect">
-                    <option value="audiobook">Audiobook Master</option>
-                    <option value="warm">Warm Narration</option>
-                    <option value="bright">Bright Dialogue</option>
-                    <option value="raw">Raw</option>
-                  </select>
-                </label>
-                <div class="voice-inventory" id="voiceInventory">Scanning voices...</div>
-              </div>
-              <div class="add-character-row">
-                <label>
-                  <span>Name</span>
-                  <input id="newCharacterName" placeholder="Character name" autocomplete="off">
-                </label>
-                <label>
-                  <span>Role</span>
-                  <input id="newCharacterRole" placeholder="Role" autocomplete="off">
-                </label>
-                <button class="primary-button" id="addCharacterButton" type="button">Add</button>
               </div>
               <div class="cast-grid" id="castGrid"></div>
             </section>

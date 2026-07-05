@@ -89,8 +89,9 @@ const defaultState = {
   mastering: "audiobook",
   targetLanguage: "English",
   songStyle: "cinematic mystery narration",
-  languageMode: "translate",
+  languageMode: "book",
   languageOutput: "",
+  customVoiceName: "",
   cast: {
     narrator: {
       id: "narrator",
@@ -291,6 +292,8 @@ let profileHistory = [];
 let liveAudioTimer = null;
 let liveAudioPlaying = false;
 let liveAudioProgressSeconds = 0;
+let dictationRecognizer = null;
+let dictationActive = false;
 
 const els = {};
 
@@ -355,6 +358,11 @@ function cacheElements() {
   els.songPlayerTitle = document.getElementById("songPlayerTitle");
   els.createCastCard = document.getElementById("createCastCard");
   els.createCastGrid = document.getElementById("createCastGrid");
+  els.importManuscriptButton = document.getElementById("importManuscriptButton");
+  els.manuscriptImportInput = document.getElementById("manuscriptImportInput");
+  els.dictateButton = document.getElementById("dictateButton");
+  els.addOwnVoiceButton = document.getElementById("addOwnVoiceButton");
+  els.ownVoiceInput = document.getElementById("ownVoiceInput");
   els.searchInput = document.getElementById("searchInput");
   els.searchResults = document.getElementById("searchResults");
   els.chapterList = document.getElementById("chapterList");
@@ -459,41 +467,50 @@ function bindEvents() {
   });
 
   els.previewButton.addEventListener("click", () => speakCurrentChapter(10));
-  document.getElementById("playSelectionButton").addEventListener("click", () => speakCurrentChapter(8));
-  document.getElementById("auditionCastButton").addEventListener("click", () => speakCurrentChapter(12));
+  bindOptionalClick("playSelectionButton", () => speakCurrentChapter(8));
+  bindOptionalClick("auditionCastButton", () => speakCurrentChapter(12));
   els.stopButton.addEventListener("click", stopAllPlayback);
-  document.getElementById("stopInlineButton").addEventListener("click", stopSpeech);
-  document.getElementById("saveProjectButton").addEventListener("click", () => {
+  bindOptionalClick("stopInlineButton", stopSpeech);
+  bindOptionalClick("saveProjectButton", () => {
     persistState();
     setStatus("Project saved");
   });
-  document.getElementById("translateButton").addEventListener("click", translateManuscript);
-  document.getElementById("songButton").addEventListener("click", handleGenerateBookClick);
-  document.getElementById("openCastButton").addEventListener("click", () => {
+  bindOptionalClick("translateButton", translateManuscript);
+  bindOptionalClick("songButton", createTimedBook);
+  bindOptionalClick("openCastButton", () => {
     focusCreateCast();
     setStatus("Cast controls opened in Create");
   });
-  document.getElementById("useGeneratedButton").addEventListener("click", useGeneratedOutput);
-  document.getElementById("playLanguageOutputButton").addEventListener("click", playLanguageOutput);
-  document.getElementById("createTimedBookButton").addEventListener("click", createTimedBook);
-  document.getElementById("createPremiumMatchButton").addEventListener("click", () => {
+  bindOptionalClick("useGeneratedButton", useGeneratedOutput);
+  bindOptionalClick("playLanguageOutputButton", playLanguageOutput);
+  bindOptionalClick("createTimedBookButton", createTimedBook);
+  bindOptionalClick("createPremiumMatchButton", () => {
     autoAssignVoices();
     renderCast();
     renderCreateCast();
     renderReleasePreview();
     setStatus("Create cast matched to the best available voices");
   });
-  document.getElementById("detectCharactersButton").addEventListener("click", () => {
+  bindOptionalClick("detectCharactersButton", () => {
     addMissingCharactersFromScript();
     renderAll();
     setStatus("Characters detected from manuscript");
   });
-  document.getElementById("premiumMatchButton").addEventListener("click", () => {
+  bindOptionalClick("premiumMatchButton", () => {
     autoAssignVoices();
     renderAll();
     setStatus("Studio-grade voices matched to cast");
   });
-  document.getElementById("addCharacterButton").addEventListener("click", addCharacterFromForm);
+  bindOptionalClick("addCharacterButton", addCharacterFromForm);
+  bindOptionalClick("importManuscriptButton", importManuscriptFile);
+  bindOptionalClick("dictateButton", toggleDictation);
+  bindOptionalClick("addOwnVoiceButton", selectOwnVoiceFile);
+  if (els.manuscriptImportInput) {
+    els.manuscriptImportInput.addEventListener("change", handleManuscriptImport);
+  }
+  if (els.ownVoiceInput) {
+    els.ownVoiceInput.addEventListener("change", handleOwnVoiceUpload);
+  }
   document.getElementById("publishButton").addEventListener("click", publishAudiobook);
   document.getElementById("exportPackageButton").addEventListener("click", exportCurrentPackage);
   document.getElementById("exportOtherSitesButton").addEventListener("click", exportAllOtherSitesPackage);
@@ -560,6 +577,13 @@ function bindEvents() {
   }
 }
 
+function bindOptionalClick(id, handler) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.addEventListener("click", handler);
+  }
+}
+
 function hydrateInputs() {
   els.bookTitle.value = state.title;
   els.authorName.value = state.author;
@@ -619,6 +643,123 @@ function handlePlanInput(normalize) {
   renderStats();
   renderReleasePreview();
   renderTrackSlider();
+}
+
+function updateManuscriptFromText(text, statusMessage) {
+  const nextText = sanitizeGeneratedBookText(text);
+  state.manuscript = nextText;
+  if (els.manuscriptInput) {
+    els.manuscriptInput.value = nextText;
+  }
+  parsedBook = parseManuscript(state.manuscript);
+  addMissingCharactersFromScript(false);
+  clampActiveChapter();
+  songProgressSeconds = 0;
+  persistState();
+  renderAll();
+  if (statusMessage) {
+    setStatus(statusMessage);
+  }
+}
+
+function importManuscriptFile() {
+  if (!els.manuscriptImportInput) return;
+  els.manuscriptImportInput.click();
+}
+
+function handleManuscriptImport(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const imported = String(reader.result || "").trim();
+    if (!imported) {
+      setStatus("Imported file was empty");
+      return;
+    }
+    const current = (state.manuscript || "").trim();
+    const replace = !current || window.confirm("Replace the current manuscript with this import? Cancel appends it.");
+    const nextText = replace ? imported : `${current}\n\n${imported}`;
+    updateManuscriptFromText(nextText, `${file.name} imported`);
+    event.target.value = "";
+  };
+  reader.onerror = () => setStatus("Could not import that file");
+  reader.readAsText(file);
+}
+
+function toggleDictation() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    setStatus("Microphone dictation is unavailable in this browser");
+    return;
+  }
+  if (dictationActive && dictationRecognizer) {
+    dictationRecognizer.stop();
+    return;
+  }
+  dictationRecognizer = new Recognition();
+  dictationRecognizer.continuous = true;
+  dictationRecognizer.interimResults = false;
+  dictationRecognizer.lang = "en-US";
+  dictationRecognizer.onstart = () => {
+    dictationActive = true;
+    updateDictationButton();
+    setStatus("Dictation started");
+  };
+  dictationRecognizer.onresult = (event) => {
+    const transcript = Array.from(event.results)
+      .slice(event.resultIndex)
+      .map((result) => result[0]?.transcript || "")
+      .join(" ")
+      .trim();
+    if (transcript) {
+      appendDictationText(transcript);
+    }
+  };
+  dictationRecognizer.onerror = () => setStatus("Dictation stopped");
+  dictationRecognizer.onend = () => {
+    dictationActive = false;
+    updateDictationButton();
+  };
+  dictationRecognizer.start();
+}
+
+function appendDictationText(text) {
+  const current = els.manuscriptInput.value;
+  const spacer = current && !current.endsWith("\n") ? "\n\n" : "";
+  els.manuscriptInput.value = `${current}${spacer}${text}`;
+  handleInputChange();
+  setStatus("Dictation added to manuscript");
+}
+
+function updateDictationButton() {
+  if (!els.dictateButton) return;
+  els.dictateButton.classList.toggle("is-active", dictationActive);
+  els.dictateButton.innerHTML = `
+    <svg class="ico"><use href="#icon-mic"></use></svg>
+    ${dictationActive ? "Stop Dictation" : "Dictate"}
+  `;
+}
+
+function selectOwnVoiceFile() {
+  if (!els.ownVoiceInput) return;
+  els.ownVoiceInput.click();
+}
+
+function handleOwnVoiceUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const cleanName = file.name.replace(/\.[^.]+$/, "").trim() || "My Voice";
+  state.customVoiceName = cleanName;
+  if (state.cast.narrator) {
+    state.cast.narrator.cloudVoice = "custom";
+  }
+  persistState();
+  renderVoiceInventory();
+  renderCreateCast();
+  renderCast();
+  setStatus(`${cleanName} added to Voice Studio`);
+  event.target.value = "";
 }
 
 function renderAll() {
@@ -1126,6 +1267,7 @@ function renderCreateCast() {
       character.voiceURI = pickVoice(index, character).voiceURI;
     }
     const voice = findVoice(character.voiceURI);
+    const score = voice ? scoreVoice(voice) : 28;
     const initials = character.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
     const card = document.createElement("article");
     card.className = "create-cast-item";
@@ -1150,6 +1292,20 @@ function renderCreateCast() {
           <select data-field="cloudVoice">${hdVoiceOptions(character.cloudVoice)}</select>
         </label>
       </div>
+      <div class="quality-row">
+        <div class="quality-meter"><span style="width:${score}%"></span></div>
+        <span>${qualityLabel(score)}</span>
+      </div>
+      <div class="range-grid">
+        <label>
+          <span>Speed ${character.rate.toFixed(2)}</span>
+          <input type="range" min="0.65" max="1.25" step="0.01" value="${character.rate}" data-field="rate">
+        </label>
+        <label>
+          <span>Pitch ${character.pitch.toFixed(2)}</span>
+          <input type="range" min="0.55" max="1.45" step="0.01" value="${character.pitch}" data-field="pitch">
+        </label>
+      </div>
     `;
     card.querySelector('[data-action="test"]').addEventListener("click", () => {
       speakText(sampleForCharacter(character), character.id);
@@ -1167,6 +1323,14 @@ function renderCreateCast() {
       renderCreateCast();
       renderCast();
       renderReleasePreview();
+    });
+    card.querySelectorAll('input[type="range"]').forEach((range) => {
+      range.addEventListener("input", (event) => {
+        character[event.target.dataset.field] = Number(event.target.value);
+        persistState();
+        renderCreateCast();
+        renderCast();
+      });
     });
     els.createCastGrid.appendChild(card);
   });
@@ -1189,9 +1353,10 @@ function renderVoiceInventory() {
   if (state.voiceMode === "openai") {
     const keyReady = Boolean(els.ttsApiKey.value.trim());
     const formatLabel = state.audioQuality === "wav" ? "Ultra HD WAV" : state.audioQuality.toUpperCase();
+    const customLabel = state.customVoiceName ? ` Custom voice: ${state.customVoiceName}.` : "";
     els.voiceInventory.textContent = keyReady
-      ? `OpenAI HD ready: ${formatLabel}, ${titleCase(state.mastering)} mastering, per-character HD voices.`
-      : "OpenAI HD selected. Add a session API key to hear the higher-quality voices; browser voices stay as fallback.";
+      ? `OpenAI HD ready: ${formatLabel}, ${titleCase(state.mastering)} mastering, per-character HD voices.${customLabel}`
+      : `OpenAI HD selected. Add a session API key to hear the higher-quality voices; browser voices stay as fallback.${customLabel}`;
     return;
   }
   if (!("speechSynthesis" in window)) {
@@ -1206,7 +1371,8 @@ function renderVoiceInventory() {
   const neuralCount = voices.filter(isNeuralVoice).length;
   const studioCount = voices.filter(isStudioVoice).length;
   const best = voices[0];
-  els.voiceInventory.textContent = `${studioCount} studio / ${neuralCount} neural / ${englishCount} English voices. Best: ${best.name}.`;
+  const customLabel = state.customVoiceName ? ` Custom voice: ${state.customVoiceName}.` : "";
+  els.voiceInventory.textContent = `${studioCount} studio / ${neuralCount} neural / ${englishCount} English voices. Best: ${best.name}.${customLabel}`;
 }
 
 function renderPublishAccounts() {
@@ -1753,14 +1919,11 @@ async function createTimedBook() {
   ].join("\n");
   const fallback = buildTimedBookDraft(targetWords, chapterCount, sections);
   const result = sanitizeGeneratedBookText(await runTextGeneration(prompt, fallback));
-  state.manuscript = result;
-  els.manuscriptInput.value = result;
-  parsedBook = parseManuscript(state.manuscript);
-  addMissingCharactersFromScript(false);
-  clampActiveChapter();
-  persistState();
-  renderAll();
-  setStatus(`Created ${chapterCount}-chapter, ${state.targetPages}-page manuscript`);
+  state.languageOutput = "";
+  if (els.languageOutput) {
+    els.languageOutput.value = "";
+  }
+  updateManuscriptFromText(result, `Created ${chapterCount}-chapter, ${state.targetPages}-page manuscript`);
 }
 
 async function handleGenerateBookClick() {
@@ -1978,7 +2141,7 @@ function stopSongNodes() {
 function bookPlaybackText() {
   const output = (state.languageOutput || "").trim();
   const manuscript = (state.manuscript || "").trim();
-  const source = output || manuscript || `${state.title}. ${state.summary}`;
+  const source = manuscript || output || `${state.title}. ${state.summary}`;
   const clean = source
     .replace(/^SECTION\b.*$/gim, "")
     .replace(/^PAGE TARGET:.*$/gim, "")
@@ -2745,9 +2908,11 @@ function voiceOptions(selected) {
 }
 
 function hdVoiceOptions(selected) {
-  return hdVoices
+  const baseOptions = hdVoices
     .map((voice) => `<option value="${voice}"${voice === selected ? " selected" : ""}>${titleCase(voice)} HD</option>`)
     .join("");
+  if (!state.customVoiceName) return baseOptions;
+  return `${baseOptions}<option value="custom"${selected === "custom" ? " selected" : ""}>${escapeHtml(state.customVoiceName)} Custom</option>`;
 }
 
 function defaultHdVoice(character, index) {
@@ -2925,6 +3090,9 @@ async function speakHdText(text, castId) {
 
 async function createHdSpeech(text, cast) {
   const apiKey = els.ttsApiKey.value.trim();
+  if (cast.cloudVoice === "custom") {
+    throw new Error("Custom voice samples need a voice-cloning backend before HD rendering.");
+  }
   const response = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: {
