@@ -583,16 +583,12 @@
 
         <section class="view" id="publishView" aria-labelledby="publishHeading">
           <div class="view-grid publish-grid">
-            <section class="tool-panel">
+            <section class="tool-panel release-panel">
               <div class="panel-heading">
                 <div>
                   <p class="eyebrow">Release</p>
                   <h2 id="publishHeading">Publish Audiobook</h2>
                 </div>
-                <button class="primary-button" id="publishButton" type="button">
-                  <svg class="ico"><use href="#icon-upload"></use></svg>
-                  One-click Publish
-                </button>
               </div>
               <div class="publish-form">
                 <label>
@@ -620,9 +616,15 @@
                   <textarea id="summaryInput"></textarea>
                 </label>
               </div>
+              <div class="publish-bottom-action">
+                <button class="primary-button" id="publishButton" type="button">
+                  <svg class="ico"><use href="#icon-upload"></use></svg>
+                  One-click Publish
+                </button>
+              </div>
             </section>
 
-            <section class="tool-panel">
+            <section class="tool-panel distribution-panel">
               <div class="panel-heading">
                 <div>
                   <p class="eyebrow">Distribution</p>
@@ -675,16 +677,18 @@
         </section>
 
         <section class="view" id="profileView" aria-labelledby="profileHeading">
+          <div class="profile-exit-row" aria-label="Profile navigation">
+            <button class="ghost-button" id="profileBackButton" type="button">Back</button>
+            <button class="icon-button profile-close-button" id="profileCloseButton" type="button" aria-label="Close profile" title="Close profile">
+              <svg class="ico"><use href="#icon-x"></use></svg>
+            </button>
+          </div>
           <div class="profile-page">
             <div class="profile-hero">
-              <button class="ghost-button" id="profileBackButton" type="button">Back</button>
               <div>
                 <p class="eyebrow">Profile</p>
                 <h2 id="profileHeading">Creator Record</h2>
               </div>
-              <button class="icon-button profile-close-button" id="profileCloseButton" type="button" aria-label="Close profile" title="Close profile">
-                <svg class="ico"><use href="#icon-x"></use></svg>
-              </button>
             </div>
             <section class="profile-record-card">
               <div class="profile-record-main">
@@ -721,6 +725,36 @@
                 <article><strong>Locked: Book Builder</strong><span>Generate five audiobook drafts.</span></article>
                 <article><strong>Locked: Global Voice</strong><span>Translate a project into three languages.</span></article>
               </div>
+            </section>
+            <section class="profile-section profile-notes-section">
+              <h3>Creator Profile</h3>
+              <div class="profile-long-grid">
+                <article>
+                  <strong>Studio Focus</strong>
+                  <span>Long-form audiobook creation, full cast production, live room testing, and direct release packaging.</span>
+                </article>
+                <article>
+                  <strong>Voice Preferences</strong>
+                  <span>Warm literary narrator, restrained character acting, clean chapter delivery, and no role-label announcements.</span>
+                </article>
+                <article>
+                  <strong>Current Pipeline</strong>
+                  <span>Draft the manuscript, expand chapters, cast HD voices, master playback, then publish to connected stores.</span>
+                </article>
+                <article>
+                  <strong>Release Checklist</strong>
+                  <span>Cover, metadata, chapter files, sample clip, retail description, live launch room, and distribution export.</span>
+                </article>
+              </div>
+            </section>
+            <section class="profile-section profile-activity-section">
+              <h3>Activity Timeline</h3>
+              <ol class="profile-timeline">
+                <li><strong>Draft generated</strong><span>Book structure expanded for longer chapters.</span></li>
+                <li><strong>Cast matched</strong><span>HD voices selected for narrator and main characters.</span></li>
+                <li><strong>Live room prepared</strong><span>Reading room and listener chat are ready for preview.</span></li>
+                <li><strong>Release package queued</strong><span>Distribution metadata is waiting for final publish.</span></li>
+              </ol>
             </section>
             <section class="profile-section profile-message-section">
               <h3>Messages</h3>

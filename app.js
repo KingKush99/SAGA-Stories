@@ -657,6 +657,9 @@ function switchView(viewName) {
     els.stopButton.hidden = hidePlaybackActions;
     els.previewButton.hidden = hidePlaybackActions;
   }
+  if (els.hamburgerButton) {
+    els.hamburgerButton.hidden = viewName === "profile";
+  }
   closeAppMenu();
   hidePersonContextMenu();
 }
