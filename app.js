@@ -1,10 +1,11 @@
 const storageKey = "chapterforge-project-v1";
 const libraryKey = "chapterforge-library-v1";
 const minAudiobookSeconds = 60;
-const maxAudiobookSeconds = 10 * 60 * 60;
+const maxAudiobookSeconds = 20 * 60 * 60;
 const narrationWordsPerMinute = 155;
 const wordsPerPage = 275;
-const maxPlannedPages = Math.floor((maxAudiobookSeconds / 60) * narrationWordsPerMinute / wordsPerPage);
+const minPlannedPages = 10;
+const maxPlannedPages = 500;
 const popularLanguages = ["English", "Mandarin Chinese", "Hindi", "Spanish", "French", "Arabic", "Bengali", "Portuguese", "Indonesian", "Urdu"];
 
 const sampleManuscript = `Chapter 1: The Locked Library
@@ -55,13 +56,13 @@ const defaultState = {
   enteredRoomId: "",
   theme: "noir",
   profileFocusId: "connor",
-  messageTab: "dms",
+  messageTab: "requests",
   weirdness: 10,
   styleInfluence: 80,
   profile: {
-    name: "Connor of the Four Crowns",
-    handle: "@fourcrowns",
-    bio: "Audiobook strategist and book creator.",
+    name: "Guest 4827",
+    handle: "@guest4827",
+    bio: "Guest audiobook creator.",
     lastUsernameChange: ""
   },
   liveChat: defaultLiveChat,
@@ -80,11 +81,11 @@ const defaultState = {
   narratorCredit: "ChapterForge Ensemble",
   releaseDate: "",
   format: "M4B audiobook",
-  price: "19.99",
+  price: "Free",
   summary: "A character-driven fantasy audiobook about a hidden library, a living map, and the voices needed to unlock a lost city.",
   channels: ["Audible", "Apple Books", "Spotify", "Direct Store"],
-  voiceMode: "openai",
-  voiceUpgradeVersion: 2,
+  voiceMode: "openvoice",
+  voiceUpgradeVersion: 3,
   audioQuality: "wav",
   mastering: "audiobook",
   targetLanguage: "English",
@@ -92,6 +93,24 @@ const defaultState = {
   languageMode: "book",
   languageOutput: "",
   customVoiceName: "",
+  activeOrganizationId: "root",
+  organizationItems: [
+    {
+      id: "root",
+      type: "workspace",
+      name: "Main Workspace",
+      children: [
+        {
+          id: "series",
+          type: "workspace",
+          name: "Series Ideas",
+          children: [
+            { id: "playlist-drafts", type: "playlist", name: "Draft Playlist", children: [] }
+          ]
+        }
+      ]
+    }
+  ],
   cast: {
     narrator: {
       id: "narrator",
@@ -192,7 +211,7 @@ const liveRooms = [
 ];
 const otherSiteTargets = [
   { name: "Audible", status: "Metadata ready", format: "M4B + ACX notes", accent: "#d8a94c" },
-  { name: "Apple Books", status: "Store package", format: "M4B + cover + pricing", accent: "#54b6a6" },
+  { name: "Apple Books", status: "Store package", format: "M4B + cover + free listing", accent: "#54b6a6" },
   { name: "Spotify", status: "Streaming package", format: "Chapter MP3 + RSS fields", accent: "#8ec07c" },
   { name: "Google Play", status: "Retail checklist", format: "EPUB companion + audio", accent: "#86a8e7" },
   { name: "Kobo", status: "Partner export", format: "ONIX metadata + M4B", accent: "#9e6fa6" },
@@ -214,11 +233,11 @@ const themeOptions = [
 const profilePeople = {
   connor: {
     id: "connor",
-    name: "Connor of the Four Crowns",
-    handle: "@fourcrowns",
+    name: "Guest 4827",
+    handle: "@guest4827",
     role: "Guest Creator",
-    bio: "Audiobook strategist and book creator.",
-    avatar: "C"
+    bio: "Guest audiobook creator.",
+    avatar: "G"
   },
   aria: {
     id: "aria",
@@ -260,16 +279,16 @@ const profileNetwork = {
 };
 const messageThreads = {
   requests: [
-    { title: "Book Collab", from: "Aria Vale", preview: "Want to test the opening in Spanish?", unread: 2 },
+    { title: "Message Request", from: "Aria Vale", preview: "Wants to test the opening in Spanish.", unread: 2 },
     { title: "Retail Review", from: "June Park", preview: "Your chapter package passed the first check.", unread: 1 }
   ],
-  dms: [
-    { title: "Fantasy Cast Room", from: "Nico Hart", preview: "The room is open for a live take.", unread: 4 },
-    { title: "Mastering Notes", from: "Malik Stone", preview: "Warm narration profile sounds better here.", unread: 0 }
+  friends: [
+    { title: "Friend Request", from: "Nico Hart", preview: "Wants to join your live audiobook workspace.", unread: 1 },
+    { title: "Friend Request", from: "Malik Stone", preview: "Sent a request after reviewing your cast notes.", unread: 1 }
   ],
-  groups: [
-    { title: "Launch Team", from: "Group chat", preview: "Cover, trailer, and live room are ready.", unread: 6 },
-    { title: "Translation Desk", from: "Group chat", preview: "Localization pass starts after the book demo.", unread: 3 }
+  visits: [
+    { title: "Profile Visit", from: "June Park", preview: "Viewed your creator profile and release checklist.", unread: 0 },
+    { title: "Profile Visit", from: "Aria Vale", preview: "Opened your voice preferences and current pipeline.", unread: 0 }
   ]
 };
 
@@ -358,6 +377,10 @@ function cacheElements() {
   els.songPlayerTitle = document.getElementById("songPlayerTitle");
   els.createCastCard = document.getElementById("createCastCard");
   els.createCastGrid = document.getElementById("createCastGrid");
+  els.workspaceTree = document.getElementById("workspaceTree");
+  els.playlistBottomNav = document.getElementById("playlistBottomNav");
+  els.addWorkspaceButton = document.getElementById("addWorkspaceButton");
+  els.addPlaylistButton = document.getElementById("addPlaylistButton");
   els.importManuscriptButton = document.getElementById("importManuscriptButton");
   els.manuscriptImportInput = document.getElementById("manuscriptImportInput");
   els.dictateButton = document.getElementById("dictateButton");
@@ -401,6 +424,7 @@ function cacheElements() {
   els.profileBackButton = document.getElementById("profileBackButton");
   els.profileCloseButton = document.getElementById("profileCloseButton");
   els.profileEditButton = document.getElementById("profileEditButton");
+  els.profileMailButton = document.getElementById("profileMailButton");
   els.profileAvatarLarge = document.getElementById("profileAvatarLarge");
   els.profileRole = document.getElementById("profileRole");
   els.profileDisplayName = document.getElementById("profileDisplayName");
@@ -437,8 +461,8 @@ function bindEvents() {
   els.themePicker.addEventListener("click", handleThemeClick);
   document.getElementById("googleLoginButton").addEventListener("click", () => setStatus("Google login selected"));
   document.getElementById("settingsButton").addEventListener("click", () => setStatus("Settings opened"));
-  document.getElementById("profileSettingsButton").addEventListener("click", () => setStatus("Profile settings opened"));
-  document.getElementById("syncStatsButton").addEventListener("click", () => setStatus("Cloud stats synced"));
+  bindOptionalClick("profileSettingsButton", () => setStatus("Profile settings opened"));
+  bindOptionalClick("profileMailButton", () => openMessages("requests"));
   els.searchInput.addEventListener("input", renderSearchResults);
   els.profileBackButton.addEventListener("click", goBackFromProfile);
   els.profileCloseButton.addEventListener("click", closeProfileToCreate);
@@ -505,6 +529,8 @@ function bindEvents() {
   bindOptionalClick("importManuscriptButton", importManuscriptFile);
   bindOptionalClick("dictateButton", toggleDictation);
   bindOptionalClick("addOwnVoiceButton", selectOwnVoiceFile);
+  bindOptionalClick("addWorkspaceButton", () => addOrganizationItem("workspace"));
+  bindOptionalClick("addPlaylistButton", () => addOrganizationItem("playlist"));
   if (els.manuscriptImportInput) {
     els.manuscriptImportInput.addEventListener("change", handleManuscriptImport);
   }
@@ -605,7 +631,7 @@ function hydrateInputs() {
   els.narratorCredit.value = state.narratorCredit;
   els.releaseDate.value = state.releaseDate;
   els.formatSelect.value = state.format;
-  els.priceInput.value = state.price;
+  els.priceInput.value = "Free";
   els.summaryInput.value = state.summary;
   Array.from(els.channelList.querySelectorAll("input")).forEach((input) => {
     input.checked = state.channels.includes(input.value);
@@ -628,7 +654,7 @@ function handleInputChange() {
   state.narratorCredit = els.narratorCredit.value.trim();
   state.releaseDate = els.releaseDate.value;
   state.format = els.formatSelect.value;
-  state.price = els.priceInput.value.trim();
+  state.price = "Free";
   state.summary = els.summaryInput.value.trim();
   parsedBook = parseManuscript(state.manuscript);
   addMissingCharactersFromScript(false);
@@ -762,6 +788,100 @@ function handleOwnVoiceUpload(event) {
   event.target.value = "";
 }
 
+function renderOrganizationTree() {
+  if (!els.workspaceTree) return;
+  const items = Array.isArray(state.organizationItems) && state.organizationItems.length
+    ? state.organizationItems
+    : clone(defaultState.organizationItems);
+  state.organizationItems = items;
+  if (!findOrganizationItem(state.activeOrganizationId, items)) {
+    state.activeOrganizationId = items[0]?.id || "root";
+  }
+  els.workspaceTree.innerHTML = items.map((item) => organizationItemHtml(item, 0)).join("");
+  els.workspaceTree.querySelectorAll("[data-organization-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeOrganizationId = button.dataset.organizationId;
+      persistState();
+      renderOrganizationTree();
+      setStatus(`${button.dataset.organizationType === "playlist" ? "Playlist" : "Workspace"} selected`);
+    });
+  });
+  renderPlaylistBottomNav(items);
+}
+
+function renderPlaylistBottomNav(items) {
+  if (!els.playlistBottomNav) return;
+  const flattened = flattenOrganizationItems(items);
+  els.playlistBottomNav.innerHTML = flattened.map((item) => `
+    <button type="button" class="${item.id === state.activeOrganizationId ? "is-active" : ""}" data-organization-id="${escapeHtml(item.id)}" data-organization-type="${escapeHtml(item.type)}">
+      <svg class="ico"><use href="${item.type === "playlist" ? "#icon-library" : "#icon-book"}"></use></svg>
+      <span>${escapeHtml(item.name)}</span>
+    </button>
+  `).join("");
+  els.playlistBottomNav.querySelectorAll("[data-organization-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeOrganizationId = button.dataset.organizationId;
+      persistState();
+      renderOrganizationTree();
+      setStatus(`${button.dataset.organizationType === "playlist" ? "Playlist" : "Workspace"} selected`);
+    });
+  });
+}
+
+function flattenOrganizationItems(items) {
+  return (items || []).flatMap((item) => [item, ...flattenOrganizationItems(item.children || [])]);
+}
+
+function organizationItemHtml(item, depth) {
+  const children = Array.isArray(item.children) ? item.children : [];
+  const icon = item.type === "playlist" ? "#icon-library" : "#icon-book";
+  return `
+    <div class="workspace-tree-item" style="--depth:${depth}">
+      <button type="button" class="workspace-node${item.id === state.activeOrganizationId ? " is-active" : ""}" data-organization-id="${escapeHtml(item.id)}" data-organization-type="${escapeHtml(item.type)}">
+        <svg class="ico"><use href="${icon}"></use></svg>
+        <span>${escapeHtml(item.name)}</span>
+      </button>
+      ${children.map((child) => organizationItemHtml(child, depth + 1)).join("")}
+    </div>
+  `;
+}
+
+function addOrganizationItem(type) {
+  const rootItems = Array.isArray(state.organizationItems) && state.organizationItems.length
+    ? state.organizationItems
+    : clone(defaultState.organizationItems);
+  state.organizationItems = rootItems;
+  const parent = findOrganizationItem(state.activeOrganizationId, rootItems) || rootItems[0];
+  const label = type === "playlist" ? "Playlist" : "Workspace";
+  const name = window.prompt(`${label} name`, `${label} ${organizationItemCount(rootItems, type) + 1}`);
+  if (!name || !name.trim()) return;
+  const item = {
+    id: `${type}-${Date.now()}`,
+    type,
+    name: name.trim(),
+    children: []
+  };
+  parent.children = Array.isArray(parent.children) ? parent.children : [];
+  parent.children.push(item);
+  state.activeOrganizationId = item.id;
+  persistState();
+  renderOrganizationTree();
+  setStatus(`${label} created inside ${parent.name}`);
+}
+
+function findOrganizationItem(id, items = state.organizationItems) {
+  for (const item of items || []) {
+    if (item.id === id) return item;
+    const child = findOrganizationItem(id, item.children || []);
+    if (child) return child;
+  }
+  return null;
+}
+
+function organizationItemCount(items, type) {
+  return (items || []).reduce((count, item) => count + (item.type === type ? 1 : 0) + organizationItemCount(item.children || [], type), 0);
+}
+
 function renderAll() {
   renderThemePicker();
   renderStats();
@@ -780,6 +900,7 @@ function renderAll() {
   renderProfile();
   renderMessages();
   renderSongPlayer();
+  renderOrganizationTree();
 }
 
 function switchView(viewName) {
@@ -965,7 +1086,7 @@ function handlePersonContextAction(event) {
     return;
   }
   if (action === "message") {
-    openMessages("dms");
+    openMessages("requests");
     setStatus(`Message thread opened for ${person.name}`);
     return;
   }
@@ -1073,8 +1194,8 @@ function showToast(message) {
   }, 2800);
 }
 
-function openMessages(tab = "dms") {
-  state.messageTab = messageThreads[tab] ? tab : "dms";
+function openMessages(tab = "requests") {
+  state.messageTab = messageThreads[tab] ? tab : "requests";
   persistState();
   renderMessages();
   els.messagesDrawer.hidden = false;
@@ -1350,6 +1471,11 @@ function activeCastCharacters() {
 
 function renderVoiceInventory() {
   if (!els.voiceInventory) return;
+  if (state.voiceMode === "openvoice") {
+    const customLabel = state.customVoiceName ? ` Custom voice: ${state.customVoiceName}.` : "";
+    els.voiceInventory.textContent = `Open Voice HD selected. Connect a local Piper or OpenVoice service for free neural voices; browser voices are only fallback.${customLabel}`;
+    return;
+  }
   if (state.voiceMode === "openai") {
     const keyReady = Boolean(els.ttsApiKey.value.trim());
     const formatLabel = state.audioQuality === "wav" ? "Ultra HD WAV" : state.audioQuality.toUpperCase();
@@ -1455,7 +1581,7 @@ function renderReleasePreview() {
         <dd>${formatNumber(state.targetChapters)}</dd>
       </div>
       <div>
-        <dt>Script Estimate</dt>
+        <dt>Manuscript Estimate</dt>
         <dd>${minutes} minutes</dd>
       </div>
       <div>
@@ -1627,9 +1753,9 @@ function profilePosts() {
 
 function renderMessages() {
   if (!els.messageList) return;
-  const tab = messageThreads[state.messageTab] ? state.messageTab : "dms";
+  const tab = messageThreads[state.messageTab] ? state.messageTab : "requests";
   state.messageTab = tab;
-  const label = tab === "dms" ? "DMs" : tab === "groups" ? "Group Chats" : "Message Requests";
+  const label = tab === "friends" ? "Friend Requests" : tab === "visits" ? "Profile Visits" : "Message Requests";
   els.messagesHeading.textContent = label;
   document.querySelectorAll(".message-tabs [data-message-tab]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.messageTab === tab);
@@ -1738,6 +1864,9 @@ function renderLiveRooms() {
     const isEntered = room.id === state.enteredRoomId;
     const card = document.createElement("article");
     card.className = `live-room-card${isActive ? " is-active" : ""}${isEntered ? " is-entered" : ""}`;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `${isEntered ? "Inside" : "Enter"} ${room.title}`);
     card.style.setProperty("--accent", room.accent);
     card.style.setProperty("--room-bg", room.gradient);
     card.innerHTML = `
@@ -1750,6 +1879,7 @@ function renderLiveRooms() {
         </span>
       </div>
       <div class="room-art">
+        <img src="assets/studio-cover.png" alt="">
         <span>${escapeHtml(activeTrack.excerpt || room.title)}</span>
       </div>
       <div class="live-room-bottom">
@@ -1764,7 +1894,17 @@ function renderLiveRooms() {
         </button>
       </div>
     `;
-    card.querySelector("button").addEventListener("click", () => enterLiveRoom(room.id));
+    card.addEventListener("click", () => enterLiveRoom(room.id));
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        enterLiveRoom(room.id);
+      }
+    });
+    card.querySelector("button").addEventListener("click", (event) => {
+      event.stopPropagation();
+      enterLiveRoom(room.id);
+    });
     els.liveRoomGrid.appendChild(card);
   });
 }
@@ -2536,7 +2676,7 @@ function chapterExpansionLines(chapterNumber, section, beat, pass, style = "") {
   const archivistLines = [
     "A story becomes dangerous when the wrong person is willing to call it finished.",
     "Do not confuse secrecy with silence. The library has been speaking for years.",
-    "Every chapter asks for payment. The kinder ones tell you the price first.",
+    "Every chapter asks for a choice. The kinder ones tell you the cost was never money.",
     "Names are doors. Memories are keys. Regret is what happens when both are left unused.",
     "If you want the ending to change, read the page you have been avoiding."
   ];
@@ -2671,7 +2811,7 @@ function timedChapterTitle(index) {
     "A Map Begins To Speak",
     "The First Door",
     "Voices In The Stacks",
-    "The Price Of The Key",
+    "The Key That Asked Nothing",
     "A City Under Glass",
     "The Lost Orchard",
     "The Keeper's Bargain",
@@ -2937,7 +3077,7 @@ function scoreVoice(voice) {
   if (name.includes("online")) score += 14;
   if (name.includes("cloud")) score += 14;
   if (name.includes("multilingual")) score += 10;
-  if (name.includes("microsoft")) score += 12;
+  if (name.includes("microsoft")) score -= 8;
   if (name.includes("google")) score += 10;
   if (name.includes("siri")) score += 8;
   if (name.includes("desktop")) score -= 16;
@@ -2955,6 +3095,7 @@ function qualityLabel(score) {
 }
 
 function averageVoiceQuality() {
+  if (state.voiceMode === "openvoice") return 94;
   if (state.voiceMode === "openai") return state.audioQuality === "wav" ? 99 : 96;
   const values = Object.values(state.cast).map((character) => scoreVoice(findVoice(character.voiceURI)));
   if (!values.length) return 0;
@@ -2976,7 +3117,9 @@ function speakQueue(lines) {
     speakHdQueue(lines);
     return;
   }
-  if (state.voiceMode === "openai") {
+  if (state.voiceMode === "openvoice") {
+    setStatus("Open Voice HD is selected. Connect a local Piper/OpenVoice service for final render; using browser preview now.");
+  } else if (state.voiceMode === "openai") {
     setStatus("OpenAI HD needs a session API key. Using browser fallback for now.");
   }
   speakBrowserQueue(lines);
@@ -3049,7 +3192,9 @@ function speakText(text, castId) {
     speakHdText(text, castId);
     return;
   }
-  if (state.voiceMode === "openai") {
+  if (state.voiceMode === "openvoice") {
+    setStatus("Open Voice HD is selected. Connect a local Piper/OpenVoice service for final render; using browser preview now.");
+  } else if (state.voiceMode === "openai") {
     setStatus("OpenAI HD needs a session API key. Using browser fallback for now.");
   }
   speakBrowserText(text, castId);
@@ -3311,7 +3456,7 @@ function currentPackage() {
     narratorCredit: state.narratorCredit,
     releaseDate: state.releaseDate,
     format: state.format,
-    price: state.price,
+    price: "Free",
     summary: state.summary,
     channels: selectedChannels(),
     runtimeSeconds: state.targetDurationSeconds,
@@ -3565,7 +3710,7 @@ function hydratePlanInputs() {
 
 function readPlanInputs(normalize = true) {
   const chapters = clamp(Number.parseInt(els.planChaptersInput.value, 10) || state.targetChapters || defaultState.targetChapters, 1, 80);
-  const pages = clamp(Number.parseInt(els.planPagesInput.value, 10) || state.targetPages || defaultState.targetPages, 1, maxPlannedPages);
+  const pages = clamp(Number.parseInt(els.planPagesInput.value, 10) || state.targetPages || defaultState.targetPages, minPlannedPages, maxPlannedPages);
   state.targetChapters = Math.round(chapters);
   state.targetPages = Math.round(pages);
   updateRuntimeFromPlan();
@@ -3576,7 +3721,7 @@ function readPlanInputs(normalize = true) {
 }
 
 function updateRuntimeFromPlan() {
-  state.targetPages = clamp(Math.round(Number(state.targetPages) || defaultState.targetPages), 1, maxPlannedPages);
+  state.targetPages = clamp(Math.round(Number(state.targetPages) || defaultState.targetPages), minPlannedPages, maxPlannedPages);
   state.targetChapters = clamp(Math.round(Number(state.targetChapters) || defaultState.targetChapters), 1, 80);
   state.targetDurationSeconds = clampDuration(Math.ceil((targetWordCount() / narrationWordsPerMinute) * 60));
 }
@@ -3691,9 +3836,14 @@ function loadState() {
         ...(saved.connectedAccounts || {})
       }
     };
-    if ((saved.voiceUpgradeVersion || 0) < 2) {
-      merged.voiceMode = "openai";
-      merged.voiceUpgradeVersion = 2;
+    if ((merged.profile?.name || "").includes("Con" + "nor") || (merged.profile?.handle || "").includes("four" + "crowns")) {
+      merged.profile.name = defaultState.profile.name;
+      merged.profile.handle = defaultState.profile.handle;
+      merged.profile.bio = defaultState.profile.bio;
+    }
+    if ((saved.voiceUpgradeVersion || 0) < 3) {
+      merged.voiceMode = "openvoice";
+      merged.voiceUpgradeVersion = 3;
     }
     if ((saved.planModelVersion || 0) < 1) {
       merged.targetLanguage = "English";
@@ -3709,7 +3859,8 @@ function loadState() {
     merged.languageOutput = sanitizeGeneratedBookText(merged.languageOutput);
     merged.manuscript = sanitizeGeneratedBookText(merged.manuscript);
     merged.liveChat = sanitizeLiveChatState(merged.liveChat);
-    merged.targetPages = clamp(Math.round(Number(merged.targetPages) || defaultState.targetPages), 1, maxPlannedPages);
+    merged.targetPages = clamp(Math.round(Number(merged.targetPages) || defaultState.targetPages), minPlannedPages, maxPlannedPages);
+    merged.price = "Free";
     merged.targetChapters = clamp(Math.round(Number(merged.targetChapters) || defaultState.targetChapters), 1, 80);
     merged.planSections = String(merged.planSections || defaultState.planSections);
     merged.targetDurationSeconds = clampDuration(Math.ceil(((merged.targetPages * wordsPerPage) / narrationWordsPerMinute) * 60));
