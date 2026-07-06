@@ -56,6 +56,7 @@ const defaultState = {
   enteredRoomId: "",
   theme: "noir",
   profileFocusId: "connor",
+  profileXp: 0,
   messageTab: "requests",
   weirdness: 10,
   styleInfluence: 80,
@@ -377,6 +378,7 @@ function cacheElements() {
   els.songPlayerTitle = document.getElementById("songPlayerTitle");
   els.createCastCard = document.getElementById("createCastCard");
   els.createCastGrid = document.getElementById("createCastGrid");
+  els.createBookPlaylist = document.getElementById("createBookPlaylist");
   els.workspaceTree = document.getElementById("workspaceTree");
   els.playlistBottomNav = document.getElementById("playlistBottomNav");
   els.addWorkspaceButton = document.getElementById("addWorkspaceButton");
@@ -432,6 +434,9 @@ function cacheElements() {
   els.profileBio = document.getElementById("profileBio");
   els.profileStatsGrid = document.getElementById("profileStatsGrid");
   els.profileWorkGrid = document.getElementById("profileWorkGrid");
+  els.profileLevelFill = document.getElementById("profileLevelFill");
+  els.profileLevelLabel = document.getElementById("profileLevelLabel");
+  els.profileXpLabel = document.getElementById("profileXpLabel");
   els.profileEditModal = document.getElementById("profileEditModal");
   els.editDisplayName = document.getElementById("editDisplayName");
   els.editUsername = document.getElementById("editUsername");
@@ -897,6 +902,7 @@ function renderAll() {
   renderLiveExperience();
   renderOtherSites();
   renderLibrary();
+  renderCreateBookPlaylist();
   renderProfile();
   renderMessages();
   renderSongPlayer();
@@ -1635,6 +1641,28 @@ function renderLibrary() {
   });
 }
 
+function renderCreateBookPlaylist() {
+  if (!els.createBookPlaylist) return;
+  const items = library.length ? library.slice(0, 8) : [currentPackage()];
+  els.createBookPlaylist.innerHTML = items.map((book, index) => `
+    <button class="created-book-row${index === 0 ? " is-active" : ""}" type="button" data-book-index="${index}">
+      <img src="assets/studio-cover.png" alt="">
+      <span>
+        <strong>${escapeHtml(book.title || "Untitled Audiobook")}</strong>
+        <small>${escapeHtml(book.author || state.author)} - ${escapeHtml(book.genre || "Audiobook")} - ${escapeHtml(book.runtime || formatDuration(state.targetDurationSeconds))}</small>
+      </span>
+      <svg class="ico"><use href="#icon-play"></use></svg>
+    </button>
+  `).join("");
+  els.createBookPlaylist.querySelectorAll(".created-book-row").forEach((button) => {
+    button.addEventListener("click", () => {
+      const book = items[Number(button.dataset.bookIndex)] || items[0];
+      speakText(book.summary || book.title || state.title, "narrator");
+      setStatus(`${book.title || state.title} preview started`);
+    });
+  });
+}
+
 function renderThemePicker() {
   if (!els.themePicker) return;
   els.themePicker.innerHTML = "";
@@ -1676,6 +1704,24 @@ function renderProfile() {
   els.profileEditButton.hidden = person.id !== "connor";
   renderProfileStats();
   renderProfileWork();
+  renderProfileLevel();
+}
+
+function renderProfileLevel() {
+  if (!els.profileLevelFill) return;
+  const xp = Math.max(0, Math.round(Number(state.profileXp) || 0));
+  let level = 0;
+  let spent = 0;
+  while (xp - spent >= (level + 1) * 1000) {
+    level += 1;
+    spent += level * 1000;
+  }
+  const currentXp = xp - spent;
+  const nextRequired = (level + 1) * 1000;
+  const progress = clamp((currentXp / nextRequired) * 100, 0, 100);
+  els.profileLevelFill.style.width = `${progress}%`;
+  els.profileLevelLabel.textContent = `Level ${level}`;
+  els.profileXpLabel.textContent = `${formatNumber(currentXp)} / ${formatNumber(nextRequired)} XP to Level ${level + 1}`;
 }
 
 function renderProfileStats() {
@@ -1859,7 +1905,7 @@ function renderTrackSlider() {
 function renderLiveRooms() {
   const activeTrack = activeLiveTrack();
   els.liveRoomGrid.innerHTML = "";
-  liveRooms.forEach((room) => {
+  liveRooms.slice(0, 4).forEach((room) => {
     const isActive = room.id === state.activeRoomId;
     const isEntered = room.id === state.enteredRoomId;
     const card = document.createElement("article");
@@ -3405,6 +3451,7 @@ function publishAudiobook(targetChannels = connectedPublishChannels()) {
   library.unshift(book);
   saveLibrary();
   renderLibrary();
+  renderCreateBookPlaylist();
   switchView("otherSites");
   setStatus(`${book.title} published to ${targetChannels.join(", ")}.`);
 }
@@ -3491,6 +3538,7 @@ function clearLibrary() {
   library = [];
   saveLibrary();
   renderLibrary();
+  renderCreateBookPlaylist();
   setStatus("Library cleared");
 }
 

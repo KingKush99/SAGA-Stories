@@ -6,7 +6,7 @@
     <title>ChapterForge Audiobook Studio</title>
     <link rel="icon" type="image/png" href="assets/studio-cover.png">
     <link rel="apple-touch-icon" href="assets/studio-cover.png">
-    <link rel="stylesheet" href="styles.css?v=944effd">
+    <link rel="stylesheet" href="styles.css?v=profile-create-live-20260706">
   </head>
   <body>
     <svg aria-hidden="true" class="icon-sprite">
@@ -219,37 +219,6 @@
               </div>
             </div>
 
-            <dl class="stat-strip editor-stat-strip">
-              <div>
-                <dt>Manuscript Words</dt>
-                <dd id="wordCount">0</dd>
-              </div>
-              <div>
-                <dt>Pages</dt>
-                <dd id="pageCountDisplay">0</dd>
-              </div>
-              <div>
-                <dt>Est. Runtime</dt>
-                <dd id="runtimeEstimate">0m</dd>
-              </div>
-              <div>
-                <dt>Target Words</dt>
-                <dd id="targetWordCountDisplay">0</dd>
-              </div>
-              <div>
-                <dt>Script Runtime</dt>
-                <dd id="scriptRuntimeEstimate">0m</dd>
-              </div>
-              <div>
-                <dt>Chapters</dt>
-                <dd id="chapterCount">0</dd>
-              </div>
-              <div>
-                <dt>Cast</dt>
-                <dd id="castCount">0</dd>
-              </div>
-            </dl>
-
             <div class="editor-workspace">
               <section class="tool-panel manuscript-panel book-editor-panel">
                 <div>
@@ -257,25 +226,36 @@
                   <h3>Manuscript</h3>
                 </div>
 
-                <section class="workspace-organizer" aria-label="Workspace organizer">
-                  <div class="workspace-organizer-head">
-                    <div>
-                      <p class="eyebrow">Organization</p>
-                      <h3>Workspaces</h3>
-                    </div>
-                    <div class="workspace-actions">
-                      <button class="icon-text-button" id="addWorkspaceButton" type="button">
-                        <svg class="ico"><use href="#icon-plus-circle"></use></svg>
-                        Workspace
-                      </button>
-                      <button class="icon-text-button" id="addPlaylistButton" type="button">
-                        <svg class="ico"><use href="#icon-library"></use></svg>
-                        Playlist
-                      </button>
-                    </div>
+                <dl class="stat-strip editor-stat-strip creation-metrics">
+                  <div>
+                    <dt>Manuscript Words</dt>
+                    <dd id="wordCount">0</dd>
                   </div>
-                  <div class="workspace-tree" id="workspaceTree"></div>
-                </section>
+                  <div>
+                    <dt>Pages</dt>
+                    <dd id="pageCountDisplay">0</dd>
+                  </div>
+                  <div>
+                    <dt>Est. Runtime</dt>
+                    <dd id="runtimeEstimate">0m</dd>
+                  </div>
+                  <div>
+                    <dt>Target Words</dt>
+                    <dd id="targetWordCountDisplay">0</dd>
+                  </div>
+                  <div>
+                    <dt>Script Runtime</dt>
+                    <dd id="scriptRuntimeEstimate">0m</dd>
+                  </div>
+                  <div>
+                    <dt>Chapters</dt>
+                    <dd id="chapterCount">0</dd>
+                  </div>
+                  <div>
+                    <dt>Cast</dt>
+                    <dd id="castCount">0</dd>
+                  </div>
+                </dl>
 
                 <div class="editor-field-grid">
                   <label>
@@ -354,6 +334,25 @@
                 </div>
 
                 <textarea id="manuscriptInput" spellcheck="true"></textarea>
+                <section class="workspace-organizer save-workspace-strip" aria-label="Save workspace organizer">
+                  <div class="workspace-organizer-head">
+                    <div>
+                      <p class="eyebrow">Save To</p>
+                      <h3>Workspace</h3>
+                    </div>
+                    <div class="workspace-actions">
+                      <button class="icon-text-button" id="addWorkspaceButton" type="button">
+                        <svg class="ico"><use href="#icon-plus-circle"></use></svg>
+                        Add Workspace
+                      </button>
+                      <button class="icon-text-button" id="addPlaylistButton" type="button">
+                        <svg class="ico"><use href="#icon-library"></use></svg>
+                        Playlist
+                      </button>
+                    </div>
+                  </div>
+                  <div class="workspace-tree" id="workspaceTree"></div>
+                </section>
                 <div class="generate-bottom-action">
                   <button class="primary-button" id="songButton" type="button">
                     <svg class="ico"><use href="#icon-wand"></use></svg>
@@ -363,6 +362,16 @@
               </section>
 
               <div class="playback-column">
+              <aside class="tool-panel created-books-panel">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Playlist</p>
+                    <h3>Created Books</h3>
+                  </div>
+                </div>
+                <div class="create-book-playlist" id="createBookPlaylist"></div>
+              </aside>
+              <div hidden>
               <aside class="tool-panel voice-studio-panel">
                 <div class="panel-heading">
                   <div>
@@ -474,6 +483,7 @@
                 </div>
               </div>
               </section>
+              </div>
               </div>
             </div>
             <nav class="playlist-bottom-nav" id="playlistBottomNav" aria-label="Playlist navigation"></nav>
@@ -696,14 +706,6 @@
                   <p class="eyebrow">Profile</p>
                   <h2 id="profileHeading">Creator Record</h2>
                 </div>
-                <div class="profile-record-actions">
-                  <button class="icon-button" id="profileMailButton" type="button" aria-label="Mailbox" title="Mailbox">
-                    <svg class="ico"><use href="#icon-mail"></use></svg>
-                  </button>
-                  <button class="icon-button" id="profileSettingsButton" type="button" aria-label="Profile settings" title="Profile settings">
-                    <svg class="ico"><use href="#icon-settings"></use></svg>
-                  </button>
-                </div>
               </div>
             <section class="profile-record-card">
               <div class="profile-record-main">
@@ -720,7 +722,14 @@
                   <span id="profileBio">Guest audiobook creator.</span>
                 </div>
               </div>
-
+              <div class="profile-record-actions">
+                <button class="icon-button" id="profileMailButton" type="button" aria-label="Mailbox" title="Mailbox">
+                  <svg class="ico"><use href="#icon-mail"></use></svg>
+                </button>
+                <button class="icon-button" id="profileSettingsButton" type="button" aria-label="Profile settings" title="Profile settings">
+                  <svg class="ico"><use href="#icon-settings"></use></svg>
+                </button>
+              </div>
             </section>
             <div class="profile-stats-grid" id="profileStatsGrid"></div>
             <section class="profile-section">
@@ -782,6 +791,13 @@
                   <span>See recent viewers</span>
                 </button>
               </div>
+            </section>
+            <section class="profile-level-card" aria-label="Profile level">
+              <div>
+                <strong id="profileLevelLabel">Level 0</strong>
+                <span id="profileXpLabel">0 / 1,000 XP to Level 1</span>
+              </div>
+              <div class="profile-level-track"><span id="profileLevelFill"></span></div>
             </section>
           </div>
         </section>
@@ -845,6 +861,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=944effd"></script>
+    <script src="app.js?v=profile-create-live-20260706"></script>
   </body>
 </html>
