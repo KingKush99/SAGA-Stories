@@ -70,7 +70,7 @@ const defaultState = {
     name: "Guest 4827",
     handle: "@guest4827",
     bio: "Guest audiobook creator.",
-    mascot: "G",
+    mascot: "saint_hound",
     image: "",
     lastUsernameChange: ""
   },
@@ -169,6 +169,16 @@ const defaultState = {
 
 const accentColors = ["#54b6a6", "#d8a94c", "#b66a43", "#9e6fa6", "#86a8e7", "#e06c75", "#8ec07c"];
 const hdVoices = ["marin", "cedar", "coral", "onyx", "verse", "alloy", "ash", "ballad", "sage", "shimmer", "nova", "echo", "fable"];
+const mascotOptions = [
+  ["saint_hound", "Saint Hound"], ["midnight_hound", "Midnight Hound"], ["gold_guard", "Gold Guard"], ["blue_keeper", "Blue Keeper"],
+  ["ember_wolf", "Ember Wolf"], ["teal_bear", "Teal Bear"], ["violet_fox", "Violet Fox"], ["silver_lion", "Silver Lion"],
+  ["neon_tiger", "Neon Tiger"], ["forest_owl", "Forest Owl"], ["solar_ram", "Solar Ram"], ["storm_eagle", "Storm Eagle"],
+  ["ruby_dragon", "Ruby Dragon"], ["ice_panther", "Ice Panther"], ["cobalt_bull", "Cobalt Bull"], ["amber_hawk", "Amber Hawk"],
+  ["jade_serpent", "Jade Serpent"], ["rose_stag", "Rose Stag"], ["iron_raven", "Iron Raven"], ["opal_horse", "Opal Horse"],
+  ["bronze_lynx", "Bronze Lynx"], ["aqua_shark", "Aqua Shark"], ["plum_bison", "Plum Bison"], ["cream_falcon", "Cream Falcon"],
+  ["black_knight", "Black Knight"], ["blue_anchor", "Blue Anchor"], ["gold_crown", "Gold Crown"], ["red_shield", "Red Shield"],
+  ["green_flame", "Green Flame"], ["purple_orbit", "Purple Orbit"], ["white_star", "White Star"], ["yellow_bolt", "Yellow Bolt"]
+].map(([id, name], index) => ({ id, name, hue: (index * 31 + 206) % 360 }));
 const roomCategories = ["New", "Popular", "Oldest / Longest"];
 const audiobookCatalog = buildAudiobookCatalog(360);
 const liveRooms = [
@@ -1137,7 +1147,7 @@ function syncOwnProfile() {
   profilePeople.connor.name = own.name || defaultState.profile.name;
   profilePeople.connor.handle = normalizeHandle(own.handle || defaultState.profile.handle);
   profilePeople.connor.bio = own.bio || defaultState.profile.bio;
-  profilePeople.connor.avatar = own.mascot || initialsForName(profilePeople.connor.name);
+  profilePeople.connor.avatar = mascotOptions.some((mascot) => mascot.id === own.mascot) ? own.mascot : defaultState.profile.mascot;
 }
 
 function openProfile(profileId = "connor", options = {}) {
@@ -1262,10 +1272,12 @@ function saveProfileEditor() {
 
 function renderMascotPicker() {
   if (!els.mascotPicker) return;
-  const mascots = "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345".split("");
-  const active = state.profile.mascot || profilePeople.connor.avatar || "G";
-  els.mascotPicker.innerHTML = mascots.map((mascot, index) => `
-    <button type="button" class="${mascot === active ? "is-active" : ""}" data-mascot="${escapeHtml(mascot)}" style="--mascot-hue:${(index * 37) % 360}">${escapeHtml(mascot)}</button>
+  const active = selectedMascot().id;
+  els.mascotPicker.innerHTML = mascotOptions.map((mascot) => `
+    <button type="button" class="mascot-choice ${mascot.id === active ? "is-active" : ""}" data-mascot="${escapeHtml(mascot.id)}" style="--mascot-hue:${mascot.hue}" aria-label="${escapeHtml(mascot.name)}">
+      ${mascotMarkup(mascot)}
+      <span>${escapeHtml(mascot.name)}</span>
+    </button>
   `).join("");
   els.mascotPicker.querySelectorAll("[data-mascot]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1281,6 +1293,32 @@ function renderMascotPicker() {
     els.profileImageInput.dataset.bound = "true";
     els.profileImageInput.addEventListener("change", handleProfileImageUpload);
   }
+}
+
+function selectedMascot() {
+  const id = state.profile?.mascot || defaultState.profile.mascot;
+  return mascotOptions.find((mascot) => mascot.id === id) || mascotOptions[0];
+}
+
+function mascotMarkup(mascot = selectedMascot()) {
+  const initials = mascot.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
+  return `
+    <span class="css-mascot" style="--mascot-hue:${mascot.hue}" aria-hidden="true">
+      <span class="mascot-head">
+        <span class="mascot-ear mascot-ear-left"></span>
+        <span class="mascot-ear mascot-ear-right"></span>
+        <span class="mascot-face">
+          <span class="mascot-blaze"></span>
+          <span class="mascot-eye mascot-eye-left"></span>
+          <span class="mascot-eye mascot-eye-right"></span>
+          <span class="mascot-muzzle">
+            <span class="mascot-nose"></span>
+          </span>
+        </span>
+      </span>
+      <span class="mascot-badge">${escapeHtml(initials)}</span>
+    </span>
+  `;
 }
 
 function handleProfileImageUpload(event) {
@@ -1957,7 +1995,8 @@ function renderProfile() {
   const person = profilePeople[state.profileFocusId] || profilePeople.connor;
   state.profileFocusId = person.id;
   const ownImage = person.id === "connor" ? state.profile.image : "";
-  els.profileAvatarLarge.innerHTML = ownImage ? `<img src="${escapeHtml(ownImage)}" alt="">` : escapeHtml(person.avatar);
+  const mascot = mascotOptions.find((candidate) => candidate.id === person.avatar) || selectedMascot();
+  els.profileAvatarLarge.innerHTML = ownImage ? `<img src="${escapeHtml(ownImage)}" alt="">` : mascotMarkup(mascot);
   els.profileRole.textContent = person.role;
   els.profileDisplayName.textContent = person.name;
   els.profileHandle.textContent = person.handle;

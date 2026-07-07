@@ -982,9 +982,9 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
 .message-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .profile-settings-modal .settings-option-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
 .settings-option-grid button { justify-content: flex-start; min-height: 3.1rem; padding-inline: 0.9rem; text-align: left; }
-.mascot-picker { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.35rem; }
-.mascot-picker button { min-height: 2.35rem; border-radius: 999px; color: rgb(7, 18, 17); background: hsl(var(--mascot-hue), 70%, 68%); font-weight: 950; }
-.mascot-picker button.is-active { outline: 3px solid rgba(245, 202, 94, 0.8); outline-offset: 2px; }
+.mascot-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; max-height: 27rem; overflow: auto; padding: 0.25rem; }
+.mascot-picker button { min-height: 9.4rem; border-radius: 8px; color: rgb(245, 239, 227); background: #050607; font-weight: 950; }
+.mascot-picker button.is-active { outline: 3px solid rgba(245, 202, 94, 0.86); outline-offset: 2px; }
 .editor-field-grid, .editor-planning-grid, .editor-range-grid, .creation-metrics { grid-template-columns: 1fr; }
 .creation-metrics div { min-height: 3.5rem; }
 .editor-planning-grid textarea#ideaPromptInput { min-height: 9rem; }
@@ -1024,6 +1024,31 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
 .inline-theme-picker button { display: grid; gap: 0.15rem; text-align: left; }
 .inline-theme-picker span { color: var(--soft); font-size: 0.75rem; }
 .theme-swatch span { display: block; margin-top: 0.15rem; color: var(--soft); font-size: 0.72rem; }
+
+/* High-detail CSS mascot badges. */
+.profile-emblem { color: #fff; background: #050607; }
+.profile-emblem .css-mascot { transform: scale(0.92); }
+.mascot-choice { display: grid; place-items: center; gap: 0.35rem; padding: 0.65rem 0.45rem; }
+.mascot-choice > span:last-child { display: block; max-width: 100%; color: rgba(245, 239, 227, 0.86); font-size: 0.7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.css-mascot { --main: hsl(var(--mascot-hue), 78%, 31%); --dark: hsl(var(--mascot-hue), 84%, 17%); --light: hsl(var(--mascot-hue), 58%, 47%); --gold: #f5ca2f; position: relative; display: grid; place-items: center; width: 6rem; height: 6rem; border-radius: 999px; background: radial-gradient(circle at 50% 52%, rgba(255,255,255,0.08), transparent 36%), #050607; box-shadow: inset 0 0 0 0.22rem #050607, 0 0 0 0.18rem var(--gold), 0 0 0 0.32rem hsl(var(--mascot-hue), 86%, 42%); overflow: hidden; }
+.mascot-head { position: absolute; left: 50%; top: 0.62rem; width: 4.65rem; height: 4.35rem; transform: translateX(-50%); border-radius: 48% 48% 38% 38%; background: linear-gradient(145deg, var(--light), var(--main) 45%, var(--dark)); box-shadow: inset 0 -0.42rem 0 rgba(0,0,0,0.22), inset 0.4rem 0.2rem 0 rgba(255,255,255,0.08); }
+.mascot-head::after { content: ""; position: absolute; left: 50%; bottom: -0.52rem; width: 2.9rem; height: 1.45rem; transform: translateX(-50%); clip-path: polygon(0 0, 100% 0, 50% 100%); background: var(--dark); }
+.mascot-ear { position: absolute; top: 0.58rem; width: 1.65rem; height: 2.8rem; border-radius: 70% 55% 65% 50%; background: linear-gradient(135deg, var(--dark), var(--main)); box-shadow: inset -0.25rem -0.15rem 0 rgba(0,0,0,0.25); }
+.mascot-ear-left { left: -0.82rem; transform: rotate(21deg); }
+.mascot-ear-right { right: -0.82rem; transform: scaleX(-1) rotate(21deg); }
+.mascot-face { position: absolute; inset: 0.25rem 0.42rem 0.42rem; border-radius: inherit; overflow: hidden; }
+.mascot-blaze { position: absolute; left: 50%; top: -0.4rem; width: 1.38rem; height: 4.55rem; transform: translateX(-50%); background: #fff; clip-path: polygon(22% 0, 78% 0, 64% 26%, 84% 48%, 61% 100%, 39% 100%, 16% 48%, 36% 26%); }
+.mascot-eye { position: absolute; top: 1.42rem; width: 0.72rem; height: 0.35rem; border-radius: 999px; background: #eaf2f5; box-shadow: 0 0.12rem 0 #07121b; }
+.mascot-eye::after { content: ""; position: absolute; right: 0.04rem; top: 0.08rem; width: 0.22rem; height: 0.16rem; border-radius: 999px; background: #061017; }
+.mascot-eye-left { left: 0.72rem; transform: rotate(8deg); }
+.mascot-eye-right { right: 0.72rem; transform: scaleX(-1) rotate(8deg); }
+.mascot-muzzle { position: absolute; left: 50%; bottom: 0.42rem; width: 2.2rem; height: 1.55rem; transform: translateX(-50%); border-radius: 48% 48% 60% 60%; background: #fff; box-shadow: inset 0 -0.15rem 0 rgba(0,0,0,0.12); }
+.mascot-nose { position: absolute; left: 50%; top: 0.2rem; width: 0.8rem; height: 0.52rem; transform: translateX(-50%); border-radius: 58% 58% 44% 44%; background: #07121b; }
+.mascot-nose::after { content: ""; position: absolute; left: 50%; top: 0.48rem; width: 0.12rem; height: 0.52rem; transform: translateX(-50%); background: #07121b; box-shadow: -0.32rem 0.24rem 0 -0.08rem #07121b, 0.32rem 0.24rem 0 -0.08rem #07121b; }
+.mascot-badge { position: absolute; left: 50%; bottom: 0.42rem; display: grid; place-items: center; width: 3.1rem; height: 1.35rem; transform: translateX(-50%); border: 0.18rem solid var(--dark); border-radius: 0.35rem; color: #062033; background: var(--gold); font-size: 0.58rem; font-weight: 1000; letter-spacing: 0; box-shadow: inset 0 -0.16rem 0 rgba(0,0,0,0.16); }
+.mascot-choice:nth-child(3n) .mascot-ear { height: 2.2rem; border-radius: 62% 62% 42% 42%; }
+.mascot-choice:nth-child(4n) .mascot-head { border-radius: 58% 58% 34% 34%; }
+.mascot-choice:nth-child(5n) .mascot-blaze { width: 1.85rem; clip-path: polygon(50% 0, 84% 24%, 68% 100%, 32% 100%, 16% 24%); }
 .daily-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.45rem; margin-bottom: 0.8rem; }
 .daily-calendar article { display: grid; gap: 0.25rem; min-height: 4.6rem; align-content: center; padding: 0.55rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; text-align: center; background: rgba(255,255,255,0.045); }
 .daily-calendar article.is-claimed { border-color: rgba(84,182,166,0.48); background: rgba(84,182,166,0.14); }
