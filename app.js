@@ -178,7 +178,8 @@ const mascotOptions = [
   ["gold_bear", "Gold Bear", "bear"], ["violet_fox", "Violet Fox", "fox"], ["silver_falcon", "Silver Falcon", "falcon"], ["plum_bison", "Plum Bison", "bison"],
   ["green_flame", "Green Flame", "phoenix"], ["purple_orbit", "Purple Orbit", "manta"], ["white_star", "White Star", "unicorn"], ["yellow_bolt", "Yellow Bolt", "cheetah"],
   ["blue_anchor", "Blue Anchor", "whale"], ["red_shield", "Red Shield", "rhino"], ["black_knight", "Black Knight", "bat"], ["cream_falcon", "Cream Falcon", "hawk"],
-  ["teal_turtle", "Teal Turtle", "turtle"], ["amber_mouse", "Amber Mouse", "mouse"], ["midnight_otter", "Midnight Otter", "otter"], ["gold_crown", "Gold Crown", "griffin"]
+  ["teal_turtle", "Teal Turtle", "turtle"], ["amber_mouse", "Amber Mouse", "mouse"], ["midnight_otter", "Midnight Otter", "otter"], ["gold_crown", "Gold Crown", "griffin"],
+  ["coral_crab", "Coral Crab", "crab"], ["indigo_elephant", "Indigo Elephant", "elephant"], ["lime_gecko", "Lime Gecko", "gecko"]
 ].map(([id, name, animal], index) => ({ id, name, animal, hue: (index * 31 + 206) % 360, altHue: (index * 47 + 38) % 360 }));
 const roomCategories = ["New", "Popular", "Oldest / Longest"];
 const audiobookCatalog = buildAudiobookCatalog(360);
@@ -364,6 +365,8 @@ let profileHistory = [];
 let liveAudioTimer = null;
 let liveAudioPlaying = false;
 let liveAudioProgressSeconds = 0;
+let livePlaybackRate = 1;
+let openedBookComments = null;
 let dictationRecognizer = null;
 let dictationActive = false;
 
@@ -440,6 +443,8 @@ function cacheElements() {
   els.playlistBottomNav = document.getElementById("playlistBottomNav");
   els.addWorkspaceButton = document.getElementById("addWorkspaceButton");
   els.addPlaylistButton = document.getElementById("addPlaylistButton");
+  els.aiFillBasicsButton = document.getElementById("aiFillBasicsButton");
+  els.aiFillOutlineButton = document.getElementById("aiFillOutlineButton");
   els.importManuscriptButton = document.getElementById("importManuscriptButton");
   els.manuscriptImportInput = document.getElementById("manuscriptImportInput");
   els.dictateButton = document.getElementById("dictateButton");
@@ -625,6 +630,8 @@ function bindEvents() {
   bindOptionalClick("addCharacterButton", addCharacterFromForm);
   bindOptionalClick("importManuscriptButton", importManuscriptFile);
   bindOptionalClick("dictateButton", toggleDictation);
+  bindOptionalClick("aiFillBasicsButton", fillBookBasicsFromIdea);
+  bindOptionalClick("aiFillOutlineButton", fillOutlineFromIdea);
   bindOptionalClick("addOwnVoiceButton", selectOwnVoiceFile);
   bindOptionalClick("addWorkspaceButton", () => addOrganizationItem("workspace"));
   bindOptionalClick("addPlaylistButton", () => addOrganizationItem("playlist"));
@@ -871,8 +878,39 @@ function updateDictationButton() {
   els.dictateButton.classList.toggle("is-active", dictationActive);
   els.dictateButton.innerHTML = `
     <svg class="ico"><use href="#icon-mic"></use></svg>
-    ${dictationActive ? "Stop Dictation" : "Dictate"}
+    ${dictationActive ? "Stop dictation" : "Dictate idea"}
   `;
+}
+
+function fillBookBasicsFromIdea() {
+  const idea = (els.ideaPromptInput?.value || state.ideaPrompt || "").trim();
+  const seed = idea || "a cinematic mystery fantasy audiobook about a hidden library and a living map";
+  if (!state.title || state.title === defaultState.title) {
+    state.title = titleCase(seed.split(/[,.]/)[0].replace(/\b(a|an|the|about|with)\b/gi, "").trim()).slice(0, 48) || "Untitled Audiobook";
+  }
+  if (!state.genre || state.genre === defaultState.genre) {
+    const lower = seed.toLowerCase();
+    state.genre = lower.includes("mystery") ? "Mystery" : lower.includes("sci") ? "Science Fiction" : lower.includes("romance") ? "Romance" : "Fantasy";
+  }
+  if (!state.songStyle || state.songStyle === defaultState.songStyle) {
+    state.songStyle = "cinematic, polished, immersive, full-cast audiobook";
+  }
+  hydrateInputs();
+  persistState();
+  setStatus("Book basics filled from the idea");
+}
+
+function fillOutlineFromIdea() {
+  const title = state.title || "the audiobook";
+  const idea = (els.ideaPromptInput?.value || state.ideaPrompt || "the central conflict").trim();
+  state.planSections = [
+    `Part 1: Open ${title} with the strongest scene and introduce ${idea.slice(0, 74)}`,
+    "Part 2: Escalate the conflict with character choices, reversals, and a clear midpoint",
+    "Part 3: Resolve the core promise with a full emotional payoff and final image"
+  ].join("\n");
+  if (els.planSectionsInput) els.planSectionsInput.value = state.planSections;
+  persistState();
+  setStatus("Outline filled from the idea");
 }
 
 function selectOwnVoiceFile() {
@@ -1423,6 +1461,9 @@ function closeProfileSettings() {
 
 function renderSettingsSubmenu(panel = "theme", anchorButton = null) {
   if (!els.settingsSubmenu) return;
+  if (!anchorButton && els.profileSettingsModal) {
+    anchorButton = els.profileSettingsModal.querySelector(`[data-settings-panel="${panel}"]`);
+  }
   const labels = {
     theme: "Choose app themes and spend coins on premium looks.",
     notifications: "Room invites, publishing alerts, friend requests, and release updates.",
@@ -1452,7 +1493,8 @@ function renderSettingsSubmenu(panel = "theme", anchorButton = null) {
     ${panel === "theme" ? `<div class="theme-picker inline-theme-picker">${themeOptions.map(theme => `<button type="button" data-theme="${escapeHtml(theme.id)}" class="${state.theme === theme.id ? "is-active" : ""}" style="--swatch:${theme.accent}">${escapeHtml(theme.name)}<span>${theme.cost ? `${formatNumber(theme.cost)} coins` : "Free"}</span></button>`).join("")}</div>` : `<div class="settings-control-list">${(controlSets[panel] || []).map((item, index) => `<label><span>${escapeHtml(item)}</span><input type="${index === 0 ? "range" : "checkbox"}" ${index === 0 ? "min=\"0\" max=\"100\" value=\"60\"" : "checked"}></label>`).join("")}</div>`}
   `;
   if (anchorButton) {
-    anchorButton.insertAdjacentElement("afterend", els.settingsSubmenu);
+    const slot = anchorButton.closest(".settings-option-slot") || anchorButton.parentElement;
+    slot.appendChild(els.settingsSubmenu);
   }
   els.settingsSubmenu.querySelectorAll("[data-theme]").forEach((button) => {
     button.addEventListener("click", handleThemeClick);
@@ -1973,18 +2015,47 @@ function renderCreateBookPlaylist() {
     </article>
   `).join("");
   els.createBookPlaylist.querySelectorAll(".created-book-row").forEach((button) => {
-    button.querySelector('[data-action="preview"]').addEventListener("click", () => {
+    button.addEventListener("click", () => {
       const book = items[Number(button.dataset.bookIndex)] || items[0];
-      speakText(book.summary || book.title || state.title, "narrator");
-      setStatus(`${book.title || state.title} preview started`);
+      openCreatedBookPlayer(book);
     });
-    button.querySelector('[data-action="publish"]').addEventListener("click", () => {
+    button.querySelector('[data-action="preview"]').addEventListener("click", (event) => {
+      event.stopPropagation();
+      const book = items[Number(button.dataset.bookIndex)] || items[0];
+      openCreatedBookPlayer(book);
+    });
+    button.querySelector('[data-action="publish"]').addEventListener("click", (event) => {
+      event.stopPropagation();
       const book = items[Number(button.dataset.bookIndex)] || items[0];
       state.title = book.title || state.title;
       state.summary = book.summary || state.summary;
       publishAudiobook();
     });
   });
+}
+
+function openCreatedBookPlayer(book) {
+  stopAllPlayback();
+  state.title = book.title || state.title;
+  state.author = book.author || state.author;
+  state.genre = book.genre || state.genre;
+  state.summary = book.summary || state.summary;
+  if (Array.isArray(book.chapters) && book.chapters.length) {
+    state.manuscript = book.chapters.map((chapter) => [
+      `Chapter ${chapter.index}: ${chapter.title}`,
+      ...(chapter.lines || []).map((line) => `${line.speakerName || "Narrator"}: ${line.text || ""}`)
+    ].join("\n")).join("\n\n");
+    parsedBook = parseManuscript(state.manuscript);
+  }
+  openedBookComments = [
+    { author: "Avery", text: "The pacing on this version feels much stronger.", time: "Comment" },
+    { author: "June", text: "This one is ready for a release pass once the cover is locked.", time: "Comment" },
+    { author: "Malik", text: "The cast separation works. I would keep this voice direction.", time: "Comment" }
+  ];
+  switchView("live");
+  enterLiveRoom("song_lab");
+  renderLiveChat(openedBookComments);
+  setStatus(`${state.title} opened in playback`);
 }
 
 function renderThemePicker() {
@@ -2212,54 +2283,16 @@ function renderTrackSlider() {
 
 function renderLiveRooms() {
   els.liveRoomGrid.innerHTML = "";
-  const activeCategory = roomCategories.includes(state.liveCategory) ? state.liveCategory : roomCategories[0];
-  state.liveCategory = activeCategory;
-  const tabs = document.createElement("div");
-  tabs.className = "live-category-tabs";
-  tabs.innerHTML = roomCategories.map((category) => `<button type="button" class="${category === activeCategory ? "is-active" : ""}" data-live-category="${escapeHtml(category)}">${escapeHtml(category)}</button>`).join("");
-  tabs.querySelectorAll("[data-live-category]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.liveCategory = button.dataset.liveCategory;
-      persistState();
-      renderLiveRooms();
+  ["Oldest / Longest", "Popular", "New"].forEach((category) => {
+    const column = document.createElement("section");
+    column.className = "live-category-column";
+    column.innerHTML = `<h3>${escapeHtml(category)}</h3><div class="live-category-grid"></div>`;
+    const grid = column.querySelector(".live-category-grid");
+    audiobookCatalog.filter((item) => item.category === category).slice(0, 12).forEach((item) => {
+      grid.appendChild(renderLiveRoomCard(item));
     });
+    els.liveRoomGrid.appendChild(column);
   });
-  const grid = document.createElement("div");
-  grid.className = "live-category-grid";
-  audiobookCatalog.filter((item) => item.category === activeCategory).slice(0, 24).forEach((item) => {
-    const card = document.createElement("article");
-    card.className = "live-room-card image-room-card";
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `Enter ${item.title}`);
-    card.style.setProperty("--accent", item.accent);
-    card.innerHTML = `
-      <div class="catalog-cover" style="--cover-hue:${(item.popularity * 3) % 360};--cover-alt:${(item.minutes * 5) % 360}">
-        <span>${escapeHtml(item.genre.slice(0, 2).toUpperCase())}</span>
-      </div>
-      <div class="image-room-overlay">
-        <strong>${escapeHtml(item.title)}</strong>
-        <span>${formatNumber(item.listeners)} listening</span>
-      </div>
-      <button class="live-enter-button" type="button" aria-label="Enter ${escapeHtml(item.title)}">
-        <svg class="ico"><use href="#icon-video"></use></svg>
-      </button>
-    `;
-    const enter = () => enterCatalogRoom(item);
-    card.addEventListener("click", enter);
-    card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        enter();
-      }
-    });
-    card.querySelector("button").addEventListener("click", (event) => {
-      event.stopPropagation();
-      enter();
-    });
-    grid.appendChild(card);
-  });
-  els.liveRoomGrid.append(tabs, grid);
 }
 
 function enterCatalogRoom(item) {
@@ -2267,6 +2300,40 @@ function enterCatalogRoom(item) {
   enterLiveRoom(roomId);
   state.activeRoomId = roomId;
   els.roomStageTitle.textContent = item.title;
+}
+
+function renderLiveRoomCard(item) {
+  const card = document.createElement("article");
+  card.className = "live-room-card image-room-card";
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", `Enter ${item.title}`);
+  card.style.setProperty("--accent", item.accent);
+  card.innerHTML = `
+    <div class="catalog-cover" style="--cover-hue:${(item.popularity * 3) % 360};--cover-alt:${(item.minutes * 5) % 360}">
+      <span>${escapeHtml(item.genre.slice(0, 2).toUpperCase())}</span>
+    </div>
+    <div class="image-room-overlay">
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${formatNumber(item.listeners)} listening</span>
+    </div>
+    <button class="live-enter-button" type="button" aria-label="Enter ${escapeHtml(item.title)}">
+      <svg class="ico"><use href="#icon-video"></use></svg>
+    </button>
+  `;
+  const enter = () => enterCatalogRoom(item);
+  card.addEventListener("click", enter);
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      enter();
+    }
+  });
+  card.querySelector("button").addEventListener("click", (event) => {
+    event.stopPropagation();
+    enter();
+  });
+  return card;
 }
 
 function renderRoomStage() {
@@ -2311,21 +2378,22 @@ function renderRoomStage() {
         <button class="icon-button" id="livePrevTrackButton" type="button" aria-label="Previous chapter" title="Previous chapter">
           <svg class="ico"><use href="#icon-chevron-left"></use></svg>
         </button>
-        <button class="audible-skip" id="liveRewindButton" type="button" aria-label="Rewind 30 seconds">30</button>
+        <button class="audible-skip audible-skip-back" id="liveRewindButton" type="button" aria-label="Rewind 30 seconds"><span>30</span></button>
         <button class="audible-play" id="livePlayPauseButton" type="button" aria-label="${liveAudioPlaying ? "Pause audiobook" : "Play audiobook"}">
           <svg class="ico"><use href="#${liveAudioPlaying ? "icon-pause" : "icon-play"}"></use></svg>
         </button>
-        <button class="audible-skip" id="liveForwardButton" type="button" aria-label="Forward 30 seconds">30</button>
+        <button class="audible-skip audible-skip-forward" id="liveForwardButton" type="button" aria-label="Forward 30 seconds"><span>30</span></button>
         <button class="icon-button" id="liveNextTrackButton" type="button" aria-label="Next chapter" title="Next chapter">
           <svg class="ico"><use href="#icon-chevron-right"></use></svg>
         </button>
       </div>
       <div class="audible-bottom-row">
-        <button type="button" id="liveSpeedButton">1.00X<span>Speed</span></button>
+        <button type="button" id="liveSpeedButton">${livePlaybackRate.toFixed(2)}X<span>Speed</span></button>
         <button type="button" id="liveChaptersButton">Chapters<span>List</span></button>
-        <button type="button" id="liveTimerButton">Timer<span>Sleep</span></button>
-        <button type="button" id="liveClipButton">+ Clip<span>Save</span></button>
+        <button type="button" id="liveShareSectionButton">Share<span>Section</span></button>
+        <button type="button" id="liveShareBookButton">Share<span>Book</span></button>
       </div>
+      <div class="live-chapter-menu" id="liveChapterMenu" hidden></div>
     </div>
   ` : `
     <div class="room-empty-state" hidden></div>
@@ -2339,17 +2407,17 @@ function renderRoomStage() {
     els.roomStagePlayer.querySelector("#livePrevTrackButton").addEventListener("click", () => moveActiveTrack(-1));
     els.roomStagePlayer.querySelector("#liveNextTrackButton").addEventListener("click", () => moveActiveTrack(1));
     els.roomStagePlayer.querySelector("#liveAudioProgress").addEventListener("input", (event) => setLiveAudiobookProgress(Number(event.target.value)));
-    els.roomStagePlayer.querySelector("#liveSpeedButton").addEventListener("click", () => setStatus("Speed controls opened"));
-    els.roomStagePlayer.querySelector("#liveChaptersButton").addEventListener("click", () => setStatus("Chapter list opened"));
-    els.roomStagePlayer.querySelector("#liveTimerButton").addEventListener("click", () => setStatus("Sleep timer opened"));
-    els.roomStagePlayer.querySelector("#liveClipButton").addEventListener("click", () => setStatus("Clip saved"));
+    els.roomStagePlayer.querySelector("#liveSpeedButton").addEventListener("click", cycleLivePlaybackSpeed);
+    els.roomStagePlayer.querySelector("#liveChaptersButton").addEventListener("click", toggleLiveChapterList);
+    els.roomStagePlayer.querySelector("#liveShareSectionButton").addEventListener("click", () => shareLiveAudio("section"));
+    els.roomStagePlayer.querySelector("#liveShareBookButton").addEventListener("click", () => shareLiveAudio("book"));
   }
   renderLiveChat(chat);
 }
 
 function renderLiveChat(chat = liveChatForRoom(selectedLiveRoom().id)) {
   els.liveChatMessages.innerHTML = chat.map((message) => `
-    <div class="chat-message${message.author === "You" ? " is-you" : ""}">
+    <div class="chat-message${message.author === "You" ? " is-you" : ""}" style="--chat-hue:${hashText(message.author) % 360}">
       <strong>${escapeHtml(message.author)}</strong>
       <p>${escapeHtml(message.text)}</p>
       <span>${escapeHtml(message.time)}</span>
@@ -2426,7 +2494,7 @@ async function createTimedBook() {
     const variantFallback = index === 0 ? fallback : buildTimedBookDraft(targetWords, chapterCount, sections)
       .replace(state.title, `${state.title}: Version ${index + 1}`)
       .replaceAll("The library", index % 2 ? "The archive" : "The listening room");
-    results.push(sanitizeGeneratedBookText(await runTextGeneration(variantPrompt, variantFallback)));
+    results.push(ensureGeneratedLength(sanitizeGeneratedBookText(await runTextGeneration(variantPrompt, variantFallback)), targetWords, chapterCount, sections));
   }
   state.languageOutput = "";
   if (els.languageOutput) {
@@ -2716,6 +2784,7 @@ function startLiveAudiobookPlayback() {
       return;
     }
     state.activeChapterIndex = Math.min(state.activeTrackIndex, Math.max(0, parsedBook.chapters.length - 1));
+    liveAudioPlaying = true;
     speakBrowserQueue(lines);
   }
   liveAudioPlaying = true;
@@ -2737,6 +2806,8 @@ function pauseLiveAudiobookPlayback() {
 function stopLiveAudiobookPlayback(resetProgress = false) {
   liveAudioPlaying = false;
   stopLiveAudioTimer();
+  activeQueue = [];
+  activeQueueIndex = 0;
   if (resetProgress) {
     liveAudioProgressSeconds = 0;
   }
@@ -2748,7 +2819,7 @@ function stopLiveAudiobookPlayback(resetProgress = false) {
 function startLiveAudioTimer() {
   stopLiveAudioTimer();
   liveAudioTimer = window.setInterval(() => {
-    liveAudioProgressSeconds = Math.min(liveTrackDurationSeconds(), liveAudioProgressSeconds + 1);
+    liveAudioProgressSeconds = Math.min(liveTrackDurationSeconds(), liveAudioProgressSeconds + livePlaybackRate);
     updateLiveAudioProgressUi();
     if (liveAudioProgressSeconds >= liveTrackDurationSeconds()) {
       stopLiveAudiobookPlayback(false);
@@ -2791,6 +2862,56 @@ function updateLiveAudioProgressUi() {
   if (playButton) {
     playButton.setAttribute("aria-label", liveAudioPlaying ? "Pause audiobook" : "Play audiobook");
     playButton.innerHTML = `<svg class="ico"><use href="#${liveAudioPlaying ? "icon-pause" : "icon-play"}"></use></svg>`;
+  }
+}
+
+function cycleLivePlaybackSpeed() {
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  const currentIndex = speeds.findIndex((speed) => speed >= livePlaybackRate - 0.01);
+  livePlaybackRate = speeds[(currentIndex + 1) % speeds.length];
+  if (liveAudioPlaying) {
+    stopLiveAudiobookPlayback(false);
+    window.setTimeout(startLiveAudiobookPlayback, 0);
+  } else {
+    renderRoomStage();
+  }
+  setStatus(`Playback speed ${livePlaybackRate.toFixed(2)}x`);
+}
+
+function toggleLiveChapterList() {
+  const menu = document.getElementById("liveChapterMenu");
+  if (!menu) return;
+  menu.hidden = !menu.hidden;
+  if (menu.hidden) return;
+  menu.innerHTML = liveTracks().map((track, index) => `
+    <button type="button" class="${index === state.activeTrackIndex ? "is-active" : ""}" data-track-index="${index}">
+      <strong>${escapeHtml(track.title)}</strong>
+      <span>${escapeHtml(track.runtime)} - ${formatNumber(track.words)} words</span>
+    </button>
+  `).join("");
+  menu.querySelectorAll("[data-track-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setActiveTrack(Number(button.dataset.trackIndex), true);
+      const updatedMenu = document.getElementById("liveChapterMenu");
+      if (updatedMenu) updatedMenu.hidden = true;
+    });
+  });
+}
+
+async function shareLiveAudio(scope) {
+  const track = activeLiveTrack();
+  const text = scope === "section"
+    ? `${state.title}: ${track.title}`
+    : `${state.title} by ${state.author}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: state.title, text });
+    } else if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+    }
+    setStatus(scope === "section" ? "Section share ready" : "Audiobook share ready");
+  } catch {
+    setStatus("Share canceled");
   }
 }
 
@@ -2964,6 +3085,20 @@ function buildTimedBookDraft(targetWords, chapterCount, sections = planSections(
     "",
     chapters.join("\n")
   ].join("\n");
+}
+
+function ensureGeneratedLength(text, targetWords, chapterCount, sections = planSections()) {
+  const cleanText = sanitizeGeneratedBookText(text);
+  const currentWords = countWords(cleanText);
+  const minimumWords = Math.round(Number(targetWords) * 0.9);
+  if (currentWords >= minimumWords) return cleanText;
+  const fallback = buildTimedBookDraft(targetWords, chapterCount, sections);
+  if (currentWords < Math.round(minimumWords * 0.35)) return fallback;
+  const neededWords = Math.max(0, Math.round(Number(targetWords) || 0) - currentWords);
+  const appendix = buildTimedBookDraft(neededWords, Math.max(1, Math.ceil(Number(chapterCount) / 2)), sections)
+    .replace(/^.*Audiobook Manuscript\s*/i, "")
+    .trim();
+  return sanitizeGeneratedBookText(`${cleanText}\n\n${appendix}`);
 }
 
 function distributeWordCount(totalWords, count) {
@@ -3557,6 +3692,9 @@ function speakNext() {
   const cast = getCastForLine(line);
   const utterance = new SpeechSynthesisUtterance(line.text);
   applyCastVoice(utterance, cast);
+  if (liveAudioPlaying) {
+    utterance.rate = clamp((utterance.rate || 1) * livePlaybackRate, 0.5, 2);
+  }
   utterance.onend = () => {
     activeQueueIndex += 1;
     window.setTimeout(speakNext, pauseForLine(line.text));
@@ -4009,14 +4147,16 @@ function enterLiveRoom(roomId) {
 
 function leaveLiveRoom() {
   const room = selectedLiveRoom();
-  stopLiveAudiobookPlayback(true);
+  stopAllPlayback();
   state.enteredRoomId = "";
+  openedBookComments = null;
   persistState();
   renderLiveExperience();
   setStatus(`Left ${room.title}`);
 }
 
 function liveChatForRoom(roomId) {
+  if (openedBookComments) return openedBookComments;
   if (!state.liveChat || typeof state.liveChat !== "object") {
     state.liveChat = clone(defaultLiveChat);
   }
@@ -4192,6 +4332,10 @@ function slugify(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "") || "item";
+}
+
+function hashText(value) {
+  return String(value || "").split("").reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0) >>> 0;
 }
 
 function escapeHtml(value) {

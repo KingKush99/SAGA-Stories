@@ -1120,3 +1120,197 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
   .live-category-grid, .search-results, .daily-calendar, .inline-theme-picker { grid-template-columns: 1fr; }
 }
 .status-bar { border: 0; border-radius: 999px; color: rgb(7,18,17); background: linear-gradient(135deg, rgb(126,241,217), rgb(245,202,94), rgb(224,108,117)); font-weight: 950; box-shadow: rgba(0,0,0,0.28) 0 14px 40px; }
+
+/* Visual prompt alignment pass. */
+.section-action-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.6rem; margin: 0.75rem 0; }
+.section-action-row .ghost-button { min-height: 3rem; justify-content: center; }
+
+#profileBackButton {
+  position: relative;
+  width: 5.8rem;
+  height: 2.9rem;
+  border-radius: 8px;
+  color: transparent;
+  background: linear-gradient(180deg, #f15b63, #b52431);
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 12px 28px rgba(0,0,0,0.26);
+}
+#profileBackButton::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-top: 0.78rem solid transparent;
+  border-bottom: 0.78rem solid transparent;
+  border-right: 1.35rem solid #fff;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.2));
+}
+#profileBackButton::after {
+  content: "";
+  width: 2.65rem;
+  height: 0.72rem;
+  margin-left: -0.05rem;
+  border-radius: 0 0.12rem 0.12rem 0;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+}
+#profileMailButton {
+  color: #fff;
+  background: radial-gradient(circle at 34% 24%, rgba(255,255,255,0.24), transparent 32%), rgba(84, 182, 166, 0.56);
+  border-color: rgba(126, 241, 217, 0.78);
+  box-shadow: inset 0 0 0 2px rgba(126,241,217,0.18), 0 10px 26px rgba(0,0,0,0.28);
+}
+#profileMailButton .ico { width: 1.3rem; height: 1.3rem; stroke-width: 2.7; opacity: 1; }
+
+.profile-settings-modal {
+  width: min(42rem, calc(100vw - 2rem));
+  aspect-ratio: 1 / 1;
+  max-height: calc(100dvh - 2rem);
+}
+.settings-option-grid { align-items: start; }
+.settings-option-slot { display: grid; gap: 0.5rem; min-width: 0; }
+.settings-option-slot > button { width: 100%; }
+.settings-submenu {
+  grid-column: auto;
+  margin: 0;
+  max-width: 100%;
+}
+
+.publish-grid {
+  grid-template-columns: 1fr;
+}
+.release-panel { order: 1; }
+.distribution-panel { order: 2; position: relative; }
+.publish-bottom-action {
+  order: 3;
+  display: grid;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.publish-bottom-action .primary-button { width: 100%; min-height: 4.2rem; font-size: 1.05rem; }
+.distribution-panel .release-preview { order: -1; }
+.publish-carousel-nav {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  z-index: 2;
+}
+
+.live-room-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.live-category-column {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+.live-category-column h3 {
+  margin: 0;
+  min-height: 2.7rem;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(84,182,166,0.28), rgba(216,169,76,0.18));
+}
+.live-category-column .live-category-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
+}
+.live-category-column .image-room-card { min-height: 15rem; border-radius: 12px; }
+
+.audible-top-row {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 1rem;
+  z-index: 4;
+}
+.red-back-button, .red-close-button {
+  color: #fff;
+  background: linear-gradient(180deg, #f15b63, #a71f2a);
+  border-color: rgba(255,255,255,0.18);
+}
+.audible-skip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  min-height: 3.25rem;
+  border-radius: 999px;
+  font-weight: 950;
+}
+.audible-skip::before {
+  content: "";
+  position: absolute;
+  inset: 0.43rem;
+  border: 0.18rem solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  opacity: 0.82;
+}
+.audible-skip::after {
+  content: "";
+  position: absolute;
+  top: 0.56rem;
+  width: 0;
+  height: 0;
+  border-top: 0.28rem solid transparent;
+  border-bottom: 0.28rem solid transparent;
+}
+.audible-skip-back::after { left: 0.56rem; border-right: 0.48rem solid currentColor; }
+.audible-skip-forward::after { right: 0.56rem; border-left: 0.48rem solid currentColor; }
+.live-chapter-menu {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+  padding: 0.65rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(5,6,7,0.86);
+}
+.live-chapter-menu button {
+  display: grid;
+  gap: 0.15rem;
+  min-height: 3rem;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+}
+.live-chapter-menu button.is-active { border-color: rgba(84,182,166,0.66); background: rgba(84,182,166,0.16); }
+.live-chapter-menu span { color: var(--muted); font-size: 0.75rem; }
+
+.chat-shell { background: rgba(6,7,8,0.9); }
+.chat-messages { gap: 0.15rem; }
+.chat-message {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: baseline;
+  padding: 0.32rem 0.45rem;
+  border-left: 0.22rem solid hsl(var(--chat-hue), 82%, 56%);
+  background: rgba(255,255,255,0.035);
+}
+.chat-message strong { color: hsl(var(--chat-hue), 92%, 68%); }
+.chat-message p { margin: 0; color: rgba(245,239,227,0.92); }
+.chat-message span { color: rgba(245,239,227,0.48); font-size: 0.68rem; }
+
+.created-book-row { cursor: pointer; }
+.created-book-row:hover { border-color: rgba(84,182,166,0.58); background: rgba(84,182,166,0.12); }
+
+.mascot-crab .mascot-ear { width: 1.1rem; height: 1.1rem; border-radius: 999px; top: 0.15rem; }
+.mascot-crab .mascot-head { border-radius: 52% 52% 42% 42%; }
+.mascot-elephant .mascot-ear { width: 1.9rem; height: 2.6rem; border-radius: 55% 70% 65% 50%; }
+.mascot-elephant .mascot-muzzle { height: 2.05rem; border-radius: 44% 44% 70% 70%; }
+.mascot-gecko .mascot-head { width: 4.25rem; height: 4.75rem; border-radius: 58% 58% 46% 46%; }
+.mascot-gecko .mascot-blaze { width: 0.9rem; clip-path: polygon(50% 0, 78% 100%, 22% 100%); }
+
+@media (max-width: 1050px) {
+  .live-room-grid { grid-template-columns: 1fr; }
+}

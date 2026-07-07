@@ -6,7 +6,7 @@
     <title>ChapterForge Audiobook Studio</title>
     <link rel="icon" type="image/png" href="assets/studio-cover.png">
     <link rel="apple-touch-icon" href="assets/studio-cover.png">
-    <link rel="stylesheet" href="styles.css?v=animal-mascots-live-tabs-20260707">
+    <link rel="stylesheet" href="styles.css?v=visual-prompt-player-fixes-20260707">
   </head>
   <body>
     <svg aria-hidden="true" class="icon-sprite">
@@ -104,6 +104,16 @@
       </symbol>
       <symbol id="icon-message" viewBox="0 0 24 24">
         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"></path>
+      </symbol>
+      <symbol id="icon-mail" viewBox="0 0 24 24">
+        <path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"></path>
+        <path d="m22 7-10 6L2 7"></path>
+      </symbol>
+      <symbol id="icon-calendar" viewBox="0 0 24 24">
+        <path d="M8 2v4"></path>
+        <path d="M16 2v4"></path>
+        <path d="M3 10h18"></path>
+        <path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path>
       </symbol>
       <symbol id="icon-pencil" viewBox="0 0 24 24">
         <path d="M12 20h9"></path>
@@ -205,17 +215,7 @@
                 <p class="eyebrow">Create</p>
                 <h2 id="studioHeading">Book Editor</h2>
               </div>
-              <div class="create-editor-actions">
-                <button class="ghost-button" id="importManuscriptButton" type="button">
-                  <svg class="ico"><use href="#icon-upload"></use></svg>
-                  Import
-                </button>
-                <input id="manuscriptImportInput" type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden>
-                <button class="ghost-button" id="dictateButton" type="button">
-                  <svg class="ico"><use href="#icon-mic"></use></svg>
-                  Dictate
-                </button>
-              </div>
+              <input id="manuscriptImportInput" type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden>
             </div>
 
             <div class="editor-workspace">
@@ -310,6 +310,20 @@
                     </select>
                   </label>
                 </div>
+                <div class="section-action-row">
+                  <button class="ghost-button" id="dictateButton" type="button">
+                    <svg class="ico"><use href="#icon-mic"></use></svg>
+                    Dictate idea
+                  </button>
+                  <button class="ghost-button" id="importManuscriptButton" type="button">
+                    <svg class="ico"><use href="#icon-upload"></use></svg>
+                    Import manuscript
+                  </button>
+                  <button class="ghost-button" id="aiFillBasicsButton" type="button">
+                    <svg class="ico"><use href="#icon-wand"></use></svg>
+                    AI fill basics
+                  </button>
+                </div>
 
                 <div class="editor-planning-grid">
                   <label>
@@ -332,6 +346,12 @@
                     <span>Outline</span>
                     <textarea id="planSectionsInput" spellcheck="true" placeholder="Part 1: The hook and setup&#10;Part 2: Rising conflict&#10;Part 3: Climax and resolution"></textarea>
                   </label>
+                </div>
+                <div class="section-action-row">
+                  <button class="ghost-button" id="aiFillOutlineButton" type="button">
+                    <svg class="ico"><use href="#icon-wand"></use></svg>
+                    AI fill outline
+                  </button>
                 </div>
 
                 <div class="style-chips" aria-label="Style presets">
@@ -667,12 +687,6 @@
                   <textarea id="summaryInput"></textarea>
                 </label>
               </div>
-              <div class="publish-bottom-action">
-                <button class="primary-button" id="publishButton" type="button">
-                  <svg class="ico"><use href="#icon-upload"></use></svg>
-                  One-click Publish
-                </button>
-              </div>
             </section>
 
             <section class="tool-panel distribution-panel">
@@ -704,6 +718,12 @@
               </div>
               <div class="release-preview" id="releasePreview"></div>
             </section>
+            <div class="publish-bottom-action">
+              <button class="primary-button" id="publishButton" type="button">
+                <svg class="ico"><use href="#icon-upload"></use></svg>
+                One-click Publish
+              </button>
+            </div>
           </div>
         </section>
 
@@ -889,16 +909,16 @@
               </button>
             </div>
             <div class="settings-option-grid">
-              <button type="button" data-settings-panel="theme">Theme</button>
-              <button type="button" data-settings-panel="notifications">Notifications</button>
-              <button type="button" data-settings-panel="audio">Audio</button>
-              <button type="button" data-settings-panel="visual">Visual</button>
-              <button type="button" data-settings-panel="privacy">Privacy</button>
-              <button type="button" data-settings-panel="account">Account</button>
-              <button type="button" data-settings-panel="publishing">Publishing</button>
-              <button type="button" data-settings-panel="voice">Voice Studio</button>
-              <button type="button" data-settings-panel="workspace">Workspace</button>
-              <button type="button" data-settings-panel="billing">Billing</button>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="theme">Theme</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="notifications">Notifications</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="audio">Audio</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="visual">Visual</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="privacy">Privacy</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="account">Account</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="publishing">Publishing</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="voice">Voice Studio</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="workspace">Workspace</button></div>
+              <div class="settings-option-slot"><button type="button" data-settings-panel="billing">Billing</button></div>
             </div>
             <div class="settings-submenu" id="settingsSubmenu"></div>
           </section>
@@ -952,6 +972,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=animal-mascots-live-tabs-20260707"></script>
+    <script src="app.js?v=visual-prompt-player-fixes-20260707"></script>
   </body>
 </html>
