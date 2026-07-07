@@ -967,21 +967,8 @@ function normalizeOrganizationLabels(items) {
 
 function renderPlaylistBottomNav(items) {
   if (!els.playlistBottomNav) return;
-  const flattened = flattenOrganizationItems(items);
-  els.playlistBottomNav.innerHTML = flattened.map((item) => `
-    <button type="button" class="${item.id === state.activeOrganizationId ? "is-active" : ""}" data-organization-id="${escapeHtml(item.id)}" data-organization-type="${escapeHtml(item.type)}">
-      <svg class="ico"><use href="${item.type === "playlist" ? "#icon-library" : "#icon-book"}"></use></svg>
-      <span>${escapeHtml(item.name)}</span>
-    </button>
-  `).join("");
-  els.playlistBottomNav.querySelectorAll("[data-organization-id]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeOrganizationId = button.dataset.organizationId;
-      persistState();
-      renderOrganizationTree();
-      setStatus(`${button.dataset.organizationType === "playlist" ? "Playlist" : "Workspace"} selected`);
-    });
-  });
+  els.playlistBottomNav.innerHTML = "";
+  els.playlistBottomNav.hidden = true;
 }
 
 function flattenOrganizationItems(items) {
@@ -1857,10 +1844,7 @@ function renderPublishAccounts() {
             <small>${connected ? `Connected to ${target.account}` : `Connect ${target.account}`}</small>
           </span>
         </div>
-        <button class="${connected ? "primary-button" : "icon-text-button"}" type="button" data-publish-action="${connected ? "publish" : "connect"}" data-channel="${escapeHtml(target.name)}">
-          <svg class="ico"><use href="#${connected ? "icon-upload" : "icon-user-circle"}"></use></svg>
-          ${connected ? "One-click publish" : "Connect account"}
-        </button>
+        ${connected ? `<span class="publish-connected-pill">Connected</span>` : `<button class="icon-text-button" type="button" data-publish-action="connect" data-channel="${escapeHtml(target.name)}"><svg class="ico"><use href="#icon-user-circle"></use></svg>Connect account</button>`}
       </article>
     `;
   }).join("");
