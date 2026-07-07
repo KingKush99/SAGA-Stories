@@ -58,6 +58,7 @@ const defaultState = {
   profileFocusId: "connor",
   profileXp: 0,
   coins: 0,
+  liveCategory: "New",
   dailyLogin: {
     lastClaim: "",
     streak: 0
@@ -170,15 +171,15 @@ const defaultState = {
 const accentColors = ["#54b6a6", "#d8a94c", "#b66a43", "#9e6fa6", "#86a8e7", "#e06c75", "#8ec07c"];
 const hdVoices = ["marin", "cedar", "coral", "onyx", "verse", "alloy", "ash", "ballad", "sage", "shimmer", "nova", "echo", "fable"];
 const mascotOptions = [
-  ["saint_hound", "Saint Hound"], ["midnight_hound", "Midnight Hound"], ["gold_guard", "Gold Guard"], ["blue_keeper", "Blue Keeper"],
-  ["ember_wolf", "Ember Wolf"], ["teal_bear", "Teal Bear"], ["violet_fox", "Violet Fox"], ["silver_lion", "Silver Lion"],
-  ["neon_tiger", "Neon Tiger"], ["forest_owl", "Forest Owl"], ["solar_ram", "Solar Ram"], ["storm_eagle", "Storm Eagle"],
-  ["ruby_dragon", "Ruby Dragon"], ["ice_panther", "Ice Panther"], ["cobalt_bull", "Cobalt Bull"], ["amber_hawk", "Amber Hawk"],
-  ["jade_serpent", "Jade Serpent"], ["rose_stag", "Rose Stag"], ["iron_raven", "Iron Raven"], ["opal_horse", "Opal Horse"],
-  ["bronze_lynx", "Bronze Lynx"], ["aqua_shark", "Aqua Shark"], ["plum_bison", "Plum Bison"], ["cream_falcon", "Cream Falcon"],
-  ["black_knight", "Black Knight"], ["blue_anchor", "Blue Anchor"], ["gold_crown", "Gold Crown"], ["red_shield", "Red Shield"],
-  ["green_flame", "Green Flame"], ["purple_orbit", "Purple Orbit"], ["white_star", "White Star"], ["yellow_bolt", "Yellow Bolt"]
-].map(([id, name], index) => ({ id, name, hue: (index * 31 + 206) % 360 }));
+  ["saint_hound", "Saint Hound", "hound"], ["ember_wolf", "Ember Wolf", "wolf"], ["royal_lion", "Royal Lion", "lion"], ["storm_eagle", "Storm Eagle", "eagle"],
+  ["forest_owl", "Forest Owl", "owl"], ["neon_tiger", "Neon Tiger", "tiger"], ["ice_panther", "Ice Panther", "panther"], ["ruby_dragon", "Ruby Dragon", "dragon"],
+  ["solar_ram", "Solar Ram", "ram"], ["jade_serpent", "Jade Serpent", "serpent"], ["rose_stag", "Rose Stag", "stag"], ["iron_raven", "Iron Raven", "raven"],
+  ["aqua_shark", "Aqua Shark", "shark"], ["bronze_lynx", "Bronze Lynx", "lynx"], ["opal_horse", "Opal Horse", "horse"], ["cobalt_bull", "Cobalt Bull", "bull"],
+  ["gold_bear", "Gold Bear", "bear"], ["violet_fox", "Violet Fox", "fox"], ["silver_falcon", "Silver Falcon", "falcon"], ["plum_bison", "Plum Bison", "bison"],
+  ["green_flame", "Green Flame", "phoenix"], ["purple_orbit", "Purple Orbit", "manta"], ["white_star", "White Star", "unicorn"], ["yellow_bolt", "Yellow Bolt", "cheetah"],
+  ["blue_anchor", "Blue Anchor", "whale"], ["red_shield", "Red Shield", "rhino"], ["black_knight", "Black Knight", "bat"], ["cream_falcon", "Cream Falcon", "hawk"],
+  ["teal_turtle", "Teal Turtle", "turtle"], ["amber_mouse", "Amber Mouse", "mouse"], ["midnight_otter", "Midnight Otter", "otter"], ["gold_crown", "Gold Crown", "griffin"]
+].map(([id, name, animal], index) => ({ id, name, animal, hue: (index * 31 + 206) % 360, altHue: (index * 47 + 38) % 360 }));
 const roomCategories = ["New", "Popular", "Oldest / Longest"];
 const audiobookCatalog = buildAudiobookCatalog(360);
 const liveRooms = [
@@ -564,7 +565,7 @@ function bindEvents() {
   }
   if (els.profileSettingsModal) {
     els.profileSettingsModal.querySelectorAll("[data-settings-panel]").forEach((button) => {
-      button.addEventListener("click", () => renderSettingsSubmenu(button.dataset.settingsPanel));
+      button.addEventListener("click", () => renderSettingsSubmenu(button.dataset.settingsPanel, button));
     });
   }
   document.getElementById("closeMessagesButton").addEventListener("click", closeMessages);
@@ -1147,7 +1148,9 @@ function syncOwnProfile() {
   profilePeople.connor.name = own.name || defaultState.profile.name;
   profilePeople.connor.handle = normalizeHandle(own.handle || defaultState.profile.handle);
   profilePeople.connor.bio = own.bio || defaultState.profile.bio;
-  profilePeople.connor.avatar = mascotOptions.some((mascot) => mascot.id === own.mascot) ? own.mascot : defaultState.profile.mascot;
+  const mascotId = mascotOptions.some((mascot) => mascot.id === own.mascot) ? own.mascot : defaultState.profile.mascot;
+  state.profile.mascot = mascotId;
+  profilePeople.connor.avatar = mascotId;
 }
 
 function openProfile(profileId = "connor", options = {}) {
@@ -1273,7 +1276,12 @@ function saveProfileEditor() {
 function renderMascotPicker() {
   if (!els.mascotPicker) return;
   const active = selectedMascot().id;
-  els.mascotPicker.innerHTML = mascotOptions.map((mascot) => `
+  els.mascotPicker.innerHTML = `
+    <button type="button" class="mascot-choice upload-mascot-choice" data-upload-profile-image aria-label="Choose your own image">
+      <span class="upload-mascot-circle"><svg class="ico"><use href="#icon-upload"></use></svg></span>
+      <span>Choose Yours</span>
+    </button>
+  ` + mascotOptions.map((mascot) => `
     <button type="button" class="mascot-choice ${mascot.id === active ? "is-active" : ""}" data-mascot="${escapeHtml(mascot.id)}" style="--mascot-hue:${mascot.hue}" aria-label="${escapeHtml(mascot.name)}">
       ${mascotMarkup(mascot)}
       <span>${escapeHtml(mascot.name)}</span>
@@ -1289,6 +1297,7 @@ function renderMascotPicker() {
       renderProfile();
     });
   });
+  els.mascotPicker.querySelector("[data-upload-profile-image]")?.addEventListener("click", () => els.profileImageInput?.click());
   if (els.profileImageInput && !els.profileImageInput.dataset.bound) {
     els.profileImageInput.dataset.bound = "true";
     els.profileImageInput.addEventListener("change", handleProfileImageUpload);
@@ -1303,10 +1312,13 @@ function selectedMascot() {
 function mascotMarkup(mascot = selectedMascot()) {
   const initials = mascot.name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
   return `
-    <span class="css-mascot" style="--mascot-hue:${mascot.hue}" aria-hidden="true">
+    <span class="css-mascot mascot-${escapeHtml(mascot.animal)}" style="--mascot-hue:${mascot.hue};--mascot-alt-hue:${mascot.altHue}" aria-hidden="true">
       <span class="mascot-head">
         <span class="mascot-ear mascot-ear-left"></span>
         <span class="mascot-ear mascot-ear-right"></span>
+        <span class="mascot-horn mascot-horn-left"></span>
+        <span class="mascot-horn mascot-horn-right"></span>
+        <span class="mascot-beak"></span>
         <span class="mascot-face">
           <span class="mascot-blaze"></span>
           <span class="mascot-eye mascot-eye-left"></span>
@@ -1409,7 +1421,7 @@ function closeProfileSettings() {
   if (els.profileSettingsModal) els.profileSettingsModal.hidden = true;
 }
 
-function renderSettingsSubmenu(panel = "theme") {
+function renderSettingsSubmenu(panel = "theme", anchorButton = null) {
   if (!els.settingsSubmenu) return;
   const labels = {
     theme: "Choose app themes and spend coins on premium looks.",
@@ -1423,11 +1435,25 @@ function renderSettingsSubmenu(panel = "theme") {
     workspace: "Default workspace, playlists, nested folders, and save location.",
     billing: "Coins, premium themes, purchases, and provider fees."
   };
+  const controlSets = {
+    notifications: ["Room invites", "Friend requests", "Publish alerts", "Weekly digest"],
+    audio: ["Playback speed", "Mastering profile", "Voice preview", "HD output"],
+    visual: ["Dense cards", "Reduce motion", "High contrast", "Large covers"],
+    privacy: ["Public profile", "Show online status", "Allow messages", "Search visibility"],
+    account: ["Google login", "Username", "Email", "Connected devices"],
+    publishing: ["Default platforms", "Release metadata", "Store accounts", "Export package"],
+    voice: ["Narrator default", "Cast matching", "Custom voices", "Voice quality"],
+    workspace: ["Default workspace", "Nested playlists", "Autosave", "Archive drafts"],
+    billing: ["Coin balance", "Theme purchases", "Invoices", "Provider fees"]
+  };
   els.settingsSubmenu.innerHTML = `
-    <strong>${escapeHtml(titleCase(panel))} Settings</strong>
+    <strong>${escapeHtml(panel === "voice" ? "Voice Studio" : titleCase(panel))}</strong>
     <p>${escapeHtml(labels[panel] || labels.theme)}</p>
-    ${panel === "theme" ? `<div class="theme-picker inline-theme-picker">${themeOptions.map(theme => `<button type="button" data-theme="${escapeHtml(theme.id)}" class="${state.theme === theme.id ? "is-active" : ""}" style="--swatch:${theme.accent}">${escapeHtml(theme.name)}<span>${theme.cost ? `${formatNumber(theme.cost)} coins` : "Free"}</span></button>`).join("")}</div>` : `<button class="icon-text-button" type="button">Open ${escapeHtml(titleCase(panel))} Controls</button>`}
+    ${panel === "theme" ? `<div class="theme-picker inline-theme-picker">${themeOptions.map(theme => `<button type="button" data-theme="${escapeHtml(theme.id)}" class="${state.theme === theme.id ? "is-active" : ""}" style="--swatch:${theme.accent}">${escapeHtml(theme.name)}<span>${theme.cost ? `${formatNumber(theme.cost)} coins` : "Free"}</span></button>`).join("")}</div>` : `<div class="settings-control-list">${(controlSets[panel] || []).map((item, index) => `<label><span>${escapeHtml(item)}</span><input type="${index === 0 ? "range" : "checkbox"}" ${index === 0 ? "min=\"0\" max=\"100\" value=\"60\"" : "checked"}></label>`).join("")}</div>`}
   `;
+  if (anchorButton) {
+    anchorButton.insertAdjacentElement("afterend", els.settingsSubmenu);
+  }
   els.settingsSubmenu.querySelectorAll("[data-theme]").forEach((button) => {
     button.addEventListener("click", handleThemeClick);
   });
@@ -2148,7 +2174,9 @@ function renderSearchResults() {
     const card = document.createElement("article");
     card.className = "search-result-card search-image-card";
     card.innerHTML = `
-      <img src="${escapeHtml(item.image)}" alt="">
+      <div class="catalog-cover" style="--cover-hue:${(item.popularity * 3) % 360};--cover-alt:${(item.minutes * 5) % 360}">
+        <span>${escapeHtml(item.genre.slice(0, 2).toUpperCase())}</span>
+      </div>
       <span>${escapeHtml(item.genre)} - ${escapeHtml(item.category)}</span>
       <strong>${escapeHtml(item.title)}</strong>
       <small>${formatNumber(item.listeners)} listeners - ${formatNumber(item.minutes)} min</small>
@@ -2184,44 +2212,54 @@ function renderTrackSlider() {
 
 function renderLiveRooms() {
   els.liveRoomGrid.innerHTML = "";
-  roomCategories.forEach((category) => {
-    const section = document.createElement("section");
-    section.className = "live-category-row";
-    section.innerHTML = `<h3>${escapeHtml(category)}</h3><div class="live-category-grid"></div>`;
-    const grid = section.querySelector(".live-category-grid");
-    audiobookCatalog.filter((item) => item.category === category).slice(0, 12).forEach((item) => {
-      const card = document.createElement("article");
-      card.className = "live-room-card image-room-card";
-      card.tabIndex = 0;
-      card.setAttribute("role", "button");
-      card.setAttribute("aria-label", `Enter ${item.title}`);
-      card.style.setProperty("--accent", item.accent);
-      card.innerHTML = `
-        <img src="${escapeHtml(item.image)}" alt="">
-        <div class="image-room-overlay">
-          <strong>${escapeHtml(item.title)}</strong>
-          <span>${formatNumber(item.listeners)} listening</span>
-        </div>
-        <button class="live-enter-button" type="button" aria-label="Enter ${escapeHtml(item.title)}">
-          <svg class="ico"><use href="#icon-video"></use></svg>
-        </button>
-      `;
-      const enter = () => enterCatalogRoom(item);
-      card.addEventListener("click", enter);
-      card.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          enter();
-        }
-      });
-      card.querySelector("button").addEventListener("click", (event) => {
-        event.stopPropagation();
-        enter();
-      });
-      grid.appendChild(card);
+  const activeCategory = roomCategories.includes(state.liveCategory) ? state.liveCategory : roomCategories[0];
+  state.liveCategory = activeCategory;
+  const tabs = document.createElement("div");
+  tabs.className = "live-category-tabs";
+  tabs.innerHTML = roomCategories.map((category) => `<button type="button" class="${category === activeCategory ? "is-active" : ""}" data-live-category="${escapeHtml(category)}">${escapeHtml(category)}</button>`).join("");
+  tabs.querySelectorAll("[data-live-category]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.liveCategory = button.dataset.liveCategory;
+      persistState();
+      renderLiveRooms();
     });
-    els.liveRoomGrid.appendChild(section);
   });
+  const grid = document.createElement("div");
+  grid.className = "live-category-grid";
+  audiobookCatalog.filter((item) => item.category === activeCategory).slice(0, 24).forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "live-room-card image-room-card";
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `Enter ${item.title}`);
+    card.style.setProperty("--accent", item.accent);
+    card.innerHTML = `
+      <div class="catalog-cover" style="--cover-hue:${(item.popularity * 3) % 360};--cover-alt:${(item.minutes * 5) % 360}">
+        <span>${escapeHtml(item.genre.slice(0, 2).toUpperCase())}</span>
+      </div>
+      <div class="image-room-overlay">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span>${formatNumber(item.listeners)} listening</span>
+      </div>
+      <button class="live-enter-button" type="button" aria-label="Enter ${escapeHtml(item.title)}">
+        <svg class="ico"><use href="#icon-video"></use></svg>
+      </button>
+    `;
+    const enter = () => enterCatalogRoom(item);
+    card.addEventListener("click", enter);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        enter();
+      }
+    });
+    card.querySelector("button").addEventListener("click", (event) => {
+      event.stopPropagation();
+      enter();
+    });
+    grid.appendChild(card);
+  });
+  els.liveRoomGrid.append(tabs, grid);
 }
 
 function enterCatalogRoom(item) {
@@ -3753,6 +3791,7 @@ function publishAudiobook(targetChannels = connectedPublishChannels()) {
   renderLibrary();
   renderCreateBookPlaylist();
   switchView("otherSites");
+  els.views.otherSites?.classList.add("is-published-layout");
   setStatus(`${book.title} published to ${targetChannels.join(", ")}.`);
 }
 
@@ -4166,6 +4205,11 @@ function escapeHtml(value) {
 
 function setStatus(message) {
   els.statusBar.textContent = message;
+  els.statusBar.hidden = false;
+  window.clearTimeout(setStatus.timer);
+  setStatus.timer = window.setTimeout(() => {
+    if (els.statusBar) els.statusBar.hidden = true;
+  }, 5000);
 }
 
 function loadState() {
