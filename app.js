@@ -57,6 +57,12 @@ const defaultState = {
   theme: "noir",
   profileFocusId: "connor",
   profileXp: 0,
+  coins: 0,
+  dailyLogin: {
+    lastClaim: "",
+    streak: 0
+  },
+  publishCarouselIndex: 0,
   messageTab: "requests",
   weirdness: 10,
   styleInfluence: 80,
@@ -163,6 +169,8 @@ const defaultState = {
 
 const accentColors = ["#54b6a6", "#d8a94c", "#b66a43", "#9e6fa6", "#86a8e7", "#e06c75", "#8ec07c"];
 const hdVoices = ["marin", "cedar", "coral", "onyx", "verse", "alloy", "ash", "ballad", "sage", "shimmer", "nova", "echo", "fable"];
+const roomCategories = ["New", "Popular", "Oldest / Longest"];
+const audiobookCatalog = buildAudiobookCatalog(360);
 const liveRooms = [
   {
     id: "mystery_chapter",
@@ -231,10 +239,16 @@ const publishTargets = [
   { name: "Direct Store", account: "SAGA Direct", accent: "#9e6fa6", connectUrl: "" }
 ];
 const themeOptions = [
-  { id: "noir", name: "Noir Grid", accent: "#54b6a6" },
-  { id: "waveform", name: "Waveform", accent: "#d8a94c" },
-  { id: "manuscript", name: "Manuscript", accent: "#86a8e7" },
-  { id: "stage", name: "Stage Lights", accent: "#e06c75" }
+  { id: "noir", name: "Noir Grid", accent: "#54b6a6", cost: 0 },
+  { id: "waveform", name: "Waveform", accent: "#d8a94c", cost: 0 },
+  { id: "manuscript", name: "Manuscript", accent: "#86a8e7", cost: 0 },
+  { id: "stage", name: "Stage Lights", accent: "#e06c75", cost: 100 },
+  { id: "ember", name: "Ember", accent: "#e06c75", cost: 200 },
+  { id: "forest", name: "Forest", accent: "#8ec07c", cost: 400 },
+  { id: "ocean", name: "Ocean", accent: "#54b6a6", cost: 800 },
+  { id: "violet", name: "Violet", accent: "#9e6fa6", cost: 1600 },
+  { id: "solar", name: "Solar", accent: "#f5ca5e", cost: 3200 },
+  { id: "obsidian", name: "Obsidian", accent: "#86a8e7", cost: 6400 }
 ];
 const profilePeople = {
   connor: {
@@ -283,6 +297,28 @@ const profileNetwork = {
   followers: ["aria", "malik", "june"],
   friends: ["aria", "nico"]
 };
+
+function buildAudiobookCatalog(count) {
+  const genres = ["Mystery", "Fantasy", "Sleep", "Sci-Fi", "Romance", "History", "Business", "Kids", "Thriller", "Memoir"];
+  const moods = ["Glass", "Hidden", "Silver", "Midnight", "Golden", "Quiet", "Neon", "Ancient", "Wild", "Last"];
+  const nouns = ["Library", "Orchard", "Signal", "Kingdom", "Voyage", "Archive", "Harbor", "Garden", "Machine", "Promise"];
+  return Array.from({ length: count }, (_, index) => {
+    const genre = genres[index % genres.length];
+    const title = `${moods[index % moods.length]} ${nouns[(index * 7) % nouns.length]} ${index + 1}`;
+    return {
+      id: `catalog-${index + 1}`,
+      title,
+      genre,
+      category: index < 40 ? "New" : index % 3 === 0 ? "Popular" : "Oldest / Longest",
+      listeners: 40 + ((index * 91) % 9400),
+      popularity: 30 + ((index * 47) % 70),
+      minutes: 25 + ((index * 17) % 980),
+      date: Date.now() - index * 86400000,
+      accent: accentColors[index % accentColors.length],
+      image: "assets/studio-cover.png"
+    };
+  });
+}
 const messageThreads = {
   requests: [
     { title: "Message Request", from: "Aria Vale", preview: "Wants to test the opening in Spanish.", unread: 2 },
@@ -401,6 +437,11 @@ function cacheElements() {
   els.searchInput = document.getElementById("searchInput");
   els.searchSortSelect = document.getElementById("searchSortSelect");
   els.searchResults = document.getElementById("searchResults");
+  els.dailyLoginButton = document.getElementById("dailyLoginButton");
+  els.dailyLoginModal = document.getElementById("dailyLoginModal");
+  els.closeDailyLoginButton = document.getElementById("closeDailyLoginButton");
+  els.claimDailyLoginButton = document.getElementById("claimDailyLoginButton");
+  els.dailyCalendar = document.getElementById("dailyCalendar");
   els.chapterList = document.getElementById("chapterList");
   els.linePreview = document.getElementById("linePreview");
   els.activeTakeTitle = document.getElementById("activeTakeTitle");
@@ -417,6 +458,9 @@ function cacheElements() {
   els.priceInput = document.getElementById("priceInput");
   els.summaryInput = document.getElementById("summaryInput");
   els.channelList = document.getElementById("channelList");
+  els.publishPrevButton = document.getElementById("publishPrevButton");
+  els.publishNextButton = document.getElementById("publishNextButton");
+  els.publishDots = document.getElementById("publishDots");
   els.releasePreview = document.getElementById("releasePreview");
   els.trackPrevButton = document.getElementById("trackPrevButton");
   els.trackNextButton = document.getElementById("trackNextButton");
@@ -451,6 +495,7 @@ function cacheElements() {
   els.profileEditModal = document.getElementById("profileEditModal");
   els.profileSettingsModal = document.getElementById("profileSettingsModal");
   els.closeProfileSettingsButton = document.getElementById("closeProfileSettingsButton");
+  els.settingsSubmenu = document.getElementById("settingsSubmenu");
   els.mascotPicker = document.getElementById("mascotPicker");
   els.profileImageInput = document.getElementById("profileImageInput");
   els.editDisplayName = document.getElementById("editDisplayName");
@@ -479,8 +524,9 @@ function bindEvents() {
     if (event.target === els.themeModal) closeThemeModal();
   });
   els.themePicker.addEventListener("click", handleThemeClick);
-  document.getElementById("googleLoginButton").addEventListener("click", () => setStatus("Google login selected"));
-  document.getElementById("settingsButton").addEventListener("click", () => setStatus("Settings opened"));
+  document.getElementById("googleLoginButton").addEventListener("click", startGoogleLogin);
+  document.getElementById("settingsButton").addEventListener("click", openProfileSettings);
+  bindOptionalClick("dailyLoginButton", openDailyLogin);
   bindOptionalClick("profileSettingsButton", openProfileSettings);
   bindOptionalClick("profileMailButton", () => openMessages("requests"));
   if (els.searchSortSelect) els.searchSortSelect.addEventListener("change", renderSearchResults);
@@ -499,6 +545,18 @@ function bindEvents() {
     });
   }
   bindOptionalClick("closeProfileSettingsButton", closeProfileSettings);
+  bindOptionalClick("closeDailyLoginButton", closeDailyLogin);
+  bindOptionalClick("claimDailyLoginButton", claimDailyLogin);
+  if (els.dailyLoginModal) {
+    els.dailyLoginModal.addEventListener("click", (event) => {
+      if (event.target === els.dailyLoginModal) closeDailyLogin();
+    });
+  }
+  if (els.profileSettingsModal) {
+    els.profileSettingsModal.querySelectorAll("[data-settings-panel]").forEach((button) => {
+      button.addEventListener("click", () => renderSettingsSubmenu(button.dataset.settingsPanel));
+    });
+  }
   document.getElementById("closeMessagesButton").addEventListener("click", closeMessages);
   document.querySelectorAll("[data-message-tab]").forEach((button) => {
     button.addEventListener("click", () => openMessages(button.dataset.messageTab));
@@ -566,6 +624,8 @@ function bindEvents() {
     els.ownVoiceInput.addEventListener("change", handleOwnVoiceUpload);
   }
   document.getElementById("publishButton").addEventListener("click", publishAudiobook);
+  bindOptionalClick("publishPrevButton", () => movePublishCarousel(-1));
+  bindOptionalClick("publishNextButton", () => movePublishCarousel(1));
   document.getElementById("exportPackageButton").addEventListener("click", exportCurrentPackage);
   document.getElementById("exportOtherSitesButton").addEventListener("click", exportAllOtherSitesPackage);
   document.getElementById("clearLibraryButton").addEventListener("click", clearLibrary);
@@ -994,7 +1054,7 @@ function isNativeActivationTarget(target) {
 }
 
 function isBlockingOverlayOpen() {
-  return !els.themeModal.hidden || !els.profileEditModal.hidden || !els.profileSettingsModal.hidden || !els.messagesDrawer.hidden;
+  return !els.themeModal.hidden || !els.profileEditModal.hidden || !els.profileSettingsModal.hidden || !els.dailyLoginModal.hidden || !els.messagesDrawer.hidden;
 }
 
 function toggleKeyboardPlayback() {
@@ -1051,13 +1111,21 @@ function handleThemeClick(event) {
   const button = event.target.closest("[data-theme]");
   if (!button) return;
   const nextTheme = button.dataset.theme;
-  if (!themeOptions.some((theme) => theme.id === nextTheme)) return;
+  const theme = themeOptions.find((candidate) => candidate.id === nextTheme);
+  if (!theme) return;
+  if (theme.cost && (state.coins || 0) < theme.cost) {
+    setStatus(`${theme.name} needs ${formatNumber(theme.cost)} coins`);
+    return;
+  }
+  if (theme.cost) {
+    state.coins = Math.max(0, (state.coins || 0) - theme.cost);
+  }
   state.theme = nextTheme;
   applyTheme();
   persistState();
   renderThemePicker();
   closeThemeModal();
-  setStatus(`${button.textContent} theme selected`);
+  setStatus(`${theme.name} theme selected`);
 }
 
 function applyTheme() {
@@ -1295,11 +1363,84 @@ function openProfileSettings() {
   if (!els.profileSettingsModal) return;
   els.profileSettingsModal.hidden = false;
   closeAppMenu();
+  renderSettingsSubmenu("theme");
   setStatus("Profile settings opened");
 }
 
 function closeProfileSettings() {
   if (els.profileSettingsModal) els.profileSettingsModal.hidden = true;
+}
+
+function renderSettingsSubmenu(panel = "theme") {
+  if (!els.settingsSubmenu) return;
+  const labels = {
+    theme: "Choose app themes and spend coins on premium looks.",
+    notifications: "Room invites, publishing alerts, friend requests, and release updates.",
+    audio: "Default playback speed, mastering profile, voice preview, and output quality.",
+    visual: "Card density, motion, contrast, profile image, and cover display.",
+    privacy: "Profile visibility, message requests, room presence, and search appearance.",
+    account: "Google login, username, email, session security, and connected devices.",
+    publishing: "Provider connections, release defaults, metadata, and store exports.",
+    voice: "Narrator defaults, cloned voice files, cast routing, and HD voice engine.",
+    workspace: "Default workspace, playlists, nested folders, and save location.",
+    billing: "Coins, premium themes, purchases, and provider fees."
+  };
+  els.settingsSubmenu.innerHTML = `
+    <strong>${escapeHtml(titleCase(panel))} Settings</strong>
+    <p>${escapeHtml(labels[panel] || labels.theme)}</p>
+    ${panel === "theme" ? `<div class="theme-picker inline-theme-picker">${themeOptions.map(theme => `<button type="button" data-theme="${escapeHtml(theme.id)}" class="${state.theme === theme.id ? "is-active" : ""}" style="--swatch:${theme.accent}">${escapeHtml(theme.name)}<span>${theme.cost ? `${formatNumber(theme.cost)} coins` : "Free"}</span></button>`).join("")}</div>` : `<button class="icon-text-button" type="button">Open ${escapeHtml(titleCase(panel))} Controls</button>`}
+  `;
+  els.settingsSubmenu.querySelectorAll("[data-theme]").forEach((button) => {
+    button.addEventListener("click", handleThemeClick);
+  });
+}
+
+function openDailyLogin() {
+  if (!els.dailyLoginModal) return;
+  closeAppMenu();
+  renderDailyLogin();
+  els.dailyLoginModal.hidden = false;
+}
+
+function closeDailyLogin() {
+  if (els.dailyLoginModal) els.dailyLoginModal.hidden = true;
+}
+
+function renderDailyLogin() {
+  if (!els.dailyCalendar) return;
+  const streak = Math.max(0, Number(state.dailyLogin?.streak) || 0);
+  els.dailyCalendar.innerHTML = Array.from({ length: 7 }, (_, index) => {
+    const amount = 5 * Math.pow(2, index);
+    return `<article class="${index < streak ? "is-claimed" : ""}"><strong>Day ${index + 1}</strong><span>${formatNumber(amount)} coins</span></article>`;
+  }).join("");
+}
+
+function claimDailyLogin() {
+  const today = todayKey();
+  const last = state.dailyLogin?.lastClaim || "";
+  if (last === today) {
+    setStatus("Daily coins already claimed today");
+    return;
+  }
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const nextStreak = last === yesterday ? Math.min(7, (Number(state.dailyLogin?.streak) || 0) + 1) : 1;
+  const reward = 5 * Math.pow(2, nextStreak - 1);
+  state.dailyLogin = { lastClaim: today, streak: nextStreak };
+  state.coins = (Number(state.coins) || 0) + reward;
+  persistState();
+  renderDailyLogin();
+  setStatus(`Claimed ${formatNumber(reward)} coins. Streak day ${nextStreak}.`);
+}
+
+function startGoogleLogin() {
+  const clientId = localStorage.getItem("saga-google-client-id") || "";
+  if (!clientId) {
+    setStatus("Add a Google OAuth Web Client ID in localStorage as saga-google-client-id, then click Google login again.");
+    return;
+  }
+  const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+  const scope = encodeURIComponent("openid email profile");
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${redirect}&response_type=token&scope=${scope}&prompt=select_account`;
 }
 
 function handleSongSlider(field) {
@@ -1598,10 +1739,11 @@ function renderVoiceInventory() {
 
 function renderPublishAccounts() {
   if (!els.channelList) return;
-  els.channelList.innerHTML = publishTargets.map((target) => {
+  state.publishCarouselIndex = clamp(Math.round(Number(state.publishCarouselIndex) || 0), 0, publishTargets.length - 1);
+  els.channelList.innerHTML = publishTargets.map((target, index) => {
     const connected = Boolean(state.connectedAccounts?.[target.name]);
     return `
-      <article class="publish-account-card${connected ? " is-connected" : ""}" style="--accent:${target.accent}">
+      <article class="publish-account-card${connected ? " is-connected" : ""}${index === state.publishCarouselIndex ? " is-active" : ""}" style="--accent:${target.accent}" ${index === state.publishCarouselIndex ? "" : "hidden"}>
         <div>
           <span class="publish-account-mark">${escapeHtml(target.name.slice(0, 2).toUpperCase())}</span>
           <span>
@@ -1616,6 +1758,22 @@ function renderPublishAccounts() {
       </article>
     `;
   }).join("");
+  if (els.publishDots) {
+    els.publishDots.innerHTML = publishTargets.map((target, index) => `<button type="button" class="${index === state.publishCarouselIndex ? "is-active" : ""}" data-publish-dot="${index}" aria-label="Show ${escapeHtml(target.name)}">${index + 1}</button>`).join("");
+    els.publishDots.querySelectorAll("[data-publish-dot]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.publishCarouselIndex = Number(button.dataset.publishDot);
+        persistState();
+        renderPublishAccounts();
+      });
+    });
+  }
+}
+
+function movePublishCarousel(direction) {
+  state.publishCarouselIndex = (clamp(Math.round(Number(state.publishCarouselIndex) || 0), 0, publishTargets.length - 1) + direction + publishTargets.length) % publishTargets.length;
+  persistState();
+  renderPublishAccounts();
 }
 
 function handlePublishAccountClick(event) {
@@ -1738,20 +1896,29 @@ function renderCreateBookPlaylist() {
   if (!els.createBookPlaylist) return;
   const items = library.length ? library.slice(0, 8) : [currentPackage()];
   els.createBookPlaylist.innerHTML = items.map((book, index) => `
-    <button class="created-book-row${index === 0 ? " is-active" : ""}" type="button" data-book-index="${index}">
+    <article class="created-book-row${index === 0 ? " is-active" : ""}" data-book-index="${index}">
       <img src="assets/studio-cover.png" alt="">
       <span>
         <strong>${escapeHtml(book.title || "Untitled Audiobook")}</strong>
         <small>${escapeHtml(book.author || state.author)} - ${escapeHtml(book.genre || "Audiobook")} - ${escapeHtml(book.runtime || formatDuration(state.targetDurationSeconds))}</small>
       </span>
-      <svg class="ico"><use href="#icon-play"></use></svg>
-    </button>
+      <div class="created-book-actions">
+        <button class="icon-button" type="button" data-action="preview" aria-label="Preview ${escapeHtml(book.title || state.title)}"><svg class="ico"><use href="#icon-play"></use></svg></button>
+        <button class="icon-button" type="button" data-action="publish" aria-label="Publish ${escapeHtml(book.title || state.title)}"><svg class="ico"><use href="#icon-upload"></use></svg></button>
+      </div>
+    </article>
   `).join("");
   els.createBookPlaylist.querySelectorAll(".created-book-row").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.querySelector('[data-action="preview"]').addEventListener("click", () => {
       const book = items[Number(button.dataset.bookIndex)] || items[0];
       speakText(book.summary || book.title || state.title, "narrator");
       setStatus(`${book.title || state.title} preview started`);
+    });
+    button.querySelector('[data-action="publish"]').addEventListener("click", () => {
+      const book = items[Number(button.dataset.bookIndex)] || items[0];
+      state.title = book.title || state.title;
+      state.summary = book.summary || state.summary;
+      publishAudiobook();
     });
   });
 }
@@ -1765,7 +1932,7 @@ function renderThemePicker() {
     button.className = `theme-swatch${theme.id === state.theme ? " is-active" : ""}`;
     button.dataset.theme = theme.id;
     button.style.setProperty("--swatch", theme.accent);
-    button.textContent = theme.name;
+    button.innerHTML = `${escapeHtml(theme.name)}<span>${theme.cost ? `${formatNumber(theme.cost)} coins` : "Free"}</span>`;
     els.themePicker.appendChild(button);
   });
 }
@@ -1918,50 +2085,9 @@ function renderMessages() {
 function renderSearchResults() {
   if (!els.searchResults) return;
   const query = (els.searchInput?.value || "").trim().toLowerCase();
-  const release = currentPackage();
-  const items = [
-    {
-      type: "Audiobook",
-      title: state.title || "Untitled Audiobook",
-      meta: `${state.genre} - ${formatDuration(state.targetDurationSeconds)}`,
-      popularity: 98,
-      date: Date.now(),
-      action: "Open",
-      run: () => switchView("studio")
-    },
-    {
-      type: "Live",
-      title: "Book Lab",
-      meta: "Live audiobook room",
-      popularity: 86,
-      date: Date.now() - 60000,
-      action: "Enter",
-      run: () => {
-        switchView("live");
-        enterLiveRoom("song_lab");
-      }
-    },
-    {
-      type: "Release",
-      title: release.title,
-      meta: `${release.format} - ${release.runtime}`,
-      popularity: 74,
-      date: Date.now() - 120000,
-      action: "Publish",
-      run: () => switchView("publish")
-    },
-    {
-      type: "Shelf",
-      title: "Published Audiobooks",
-      meta: `${library.length || 1} saved release${(library.length || 1) === 1 ? "" : "s"}`,
-      popularity: 64,
-      date: Date.now() - 180000,
-      action: "View",
-      run: () => switchView("otherSites")
-    }
-  ].filter((item) => {
+  const items = audiobookCatalog.filter((item) => {
     if (!query) return true;
-    return `${item.type} ${item.title} ${item.meta}`.toLowerCase().includes(query);
+    return `${item.genre} ${item.title} ${item.category}`.toLowerCase().includes(query);
   });
   const sort = els.searchSortSelect?.value || "recommended";
   items.sort((a, b) => {
@@ -1979,16 +2105,20 @@ function renderSearchResults() {
       <small>Audiobooks, rooms, and releases appear here.</small>
     </article>
   `;
-  items.forEach((item) => {
+  items.slice(0, 80).forEach((item) => {
     const card = document.createElement("article");
-    card.className = "search-result-card";
+    card.className = "search-result-card search-image-card";
     card.innerHTML = `
-      <span>${escapeHtml(item.type)}</span>
+      <img src="${escapeHtml(item.image)}" alt="">
+      <span>${escapeHtml(item.genre)} - ${escapeHtml(item.category)}</span>
       <strong>${escapeHtml(item.title)}</strong>
-      <small>${escapeHtml(item.meta)}</small>
-      <button class="icon-text-button" type="button">${escapeHtml(item.action)}</button>
+      <small>${formatNumber(item.listeners)} listeners - ${formatNumber(item.minutes)} min</small>
+      <button class="icon-text-button" type="button">Enter</button>
     `;
-    card.querySelector("button").addEventListener("click", item.run);
+    card.querySelector("button").addEventListener("click", () => {
+      switchView("live");
+      enterCatalogRoom(item);
+    });
     els.searchResults.appendChild(card);
   });
 }
@@ -2014,56 +2144,52 @@ function renderTrackSlider() {
 }
 
 function renderLiveRooms() {
-  const activeTrack = activeLiveTrack();
   els.liveRoomGrid.innerHTML = "";
-  liveRooms.slice(0, 4).forEach((room) => {
-    const isActive = room.id === state.activeRoomId;
-    const isEntered = room.id === state.enteredRoomId;
-    const card = document.createElement("article");
-    card.className = `live-room-card${isActive ? " is-active" : ""}${isEntered ? " is-entered" : ""}`;
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `${isEntered ? "Inside" : "Enter"} ${room.title}`);
-    card.style.setProperty("--accent", room.accent);
-    card.style.setProperty("--room-bg", room.gradient);
-    card.innerHTML = `
-      <div class="live-room-overlay"></div>
-      <div class="live-room-head">
-        <span class="room-avatar">${escapeHtml(room.host.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase())}</span>
-        <span>
-          <strong>${escapeHtml(room.host)}</strong>
-          <span><i></i>${escapeHtml(room.status)}</span>
-        </span>
-      </div>
-      <div class="room-art">
-        <img src="assets/studio-cover.png" alt="">
-        <span>${escapeHtml(activeTrack.excerpt || room.title)}</span>
-      </div>
-      <div class="live-room-bottom">
-        <div>
-          <h3>${escapeHtml(room.title)}</h3>
-          <p>${escapeHtml(activeTrack.title)} - ${escapeHtml(activeTrack.excerpt || room.description)}</p>
-          <span class="meta-line">${room.listeners} listeners</span>
+  roomCategories.forEach((category) => {
+    const section = document.createElement("section");
+    section.className = "live-category-row";
+    section.innerHTML = `<h3>${escapeHtml(category)}</h3><div class="live-category-grid"></div>`;
+    const grid = section.querySelector(".live-category-grid");
+    audiobookCatalog.filter((item) => item.category === category).slice(0, 12).forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "live-room-card image-room-card";
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `Enter ${item.title}`);
+      card.style.setProperty("--accent", item.accent);
+      card.innerHTML = `
+        <img src="${escapeHtml(item.image)}" alt="">
+        <div class="image-room-overlay">
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${formatNumber(item.listeners)} listening</span>
         </div>
-        <button class="live-enter-button" type="button" aria-label="${isEntered ? "Entered" : "Enter"} ${escapeHtml(room.title)}" title="${isEntered ? "Inside room" : "Enter room"}">
+        <button class="live-enter-button" type="button" aria-label="Enter ${escapeHtml(item.title)}">
           <svg class="ico"><use href="#icon-video"></use></svg>
-          <span>${isEntered ? "In" : "Enter"}</span>
         </button>
-      </div>
-    `;
-    card.addEventListener("click", () => enterLiveRoom(room.id));
-    card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        enterLiveRoom(room.id);
-      }
+      `;
+      const enter = () => enterCatalogRoom(item);
+      card.addEventListener("click", enter);
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          enter();
+        }
+      });
+      card.querySelector("button").addEventListener("click", (event) => {
+        event.stopPropagation();
+        enter();
+      });
+      grid.appendChild(card);
     });
-    card.querySelector("button").addEventListener("click", (event) => {
-      event.stopPropagation();
-      enterLiveRoom(room.id);
-    });
-    els.liveRoomGrid.appendChild(card);
+    els.liveRoomGrid.appendChild(section);
   });
+}
+
+function enterCatalogRoom(item) {
+  const roomId = liveRooms[Math.abs(item.id.length + item.title.length) % liveRooms.length].id;
+  enterLiveRoom(roomId);
+  state.activeRoomId = roomId;
+  els.roomStageTitle.textContent = item.title;
 }
 
 function renderRoomStage() {
@@ -3575,6 +3701,8 @@ function publishAudiobook(targetChannels = connectedPublishChannels()) {
     return;
   }
   const words = countWords(state.manuscript);
+  state.releaseDate = todayKey();
+  if (els.releaseDate) els.releaseDate.value = state.releaseDate;
   const book = currentPackage();
   book.channels = targetChannels;
   book.id = `release-${Date.now()}`;
@@ -3968,6 +4096,10 @@ function clamp(value, min, max) {
 
 function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function titleCase(value) {
