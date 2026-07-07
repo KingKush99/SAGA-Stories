@@ -958,3 +958,49 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
   .playback-column { position: static; max-height: none; overflow: visible; }
   .live-room-card { min-height: 20rem; }
 }
+
+/* Current UI cleanup pass. */
+.top-actions #stopButton[hidden], .top-actions #previewButton[hidden] { display: none; }
+.profile-exit-row { position: relative; margin-bottom: 0.75rem; }
+#profileBackButton { width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 8px; color: transparent; background: rgb(143, 36, 43); border-color: rgba(255, 255, 255, 0.14); }
+#profileBackButton::before { content: "<"; color: #fff; font-size: 1.4rem; font-weight: 950; }
+.profile-close-button, .red-close-button { width: 2.75rem; height: 2.75rem; border-radius: 999px; color: #fff; background: rgb(143, 36, 43); border-color: rgba(255, 255, 255, 0.14); }
+.red-back-button { width: 2.75rem; height: 2.75rem; border-radius: 8px; color: #fff; background: rgb(143, 36, 43); border-color: rgba(255, 255, 255, 0.14); }
+.profile-page { gap: 0.8rem; padding: 0.9rem; border: 1px solid rgba(216, 169, 76, 0.28); border-radius: 8px; background: rgba(8, 18, 16, 0.58); }
+.profile-hero { padding: 0; }
+.profile-hero h2 { font-size: clamp(2rem, 4vw, 3.4rem); }
+.profile-record-card { min-height: 10.5rem; background: rgba(8, 18, 16, 0.9); }
+.profile-record-actions .icon-button { width: 3rem; height: 3rem; color: rgb(245, 239, 227); background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
+#profileMailButton .ico, #profileSettingsButton .ico { width: 1.25rem; height: 1.25rem; stroke-width: 2.4; opacity: 1; }
+.profile-emblem { overflow: hidden; }
+.profile-emblem img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.profile-edit-avatar { top: auto; right: -0.15rem; bottom: -0.15rem; color: #fff; background: rgb(34, 34, 36); box-shadow: 0 0 0 2px rgba(245, 202, 94, 0.95); }
+.profile-edit-avatar .ico { opacity: 1; stroke-width: 2.8; }
+.messages-drawer { position: fixed; inset: 5.4rem 1.4rem auto auto; z-index: 90; display: block; width: min(38rem, calc(100vw - 2rem)); padding: 0; background: transparent; backdrop-filter: none; }
+.messages-panel { width: 100%; max-height: min(34rem, calc(100dvh - 7rem)); border-radius: 8px; }
+.message-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.profile-settings-modal .settings-option-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
+.settings-option-grid button { justify-content: flex-start; min-height: 3.1rem; padding-inline: 0.9rem; text-align: left; }
+.mascot-picker { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.35rem; }
+.mascot-picker button { min-height: 2.35rem; border-radius: 999px; color: rgb(7, 18, 17); background: hsl(var(--mascot-hue), 70%, 68%); font-weight: 950; }
+.mascot-picker button.is-active { outline: 3px solid rgba(245, 202, 94, 0.8); outline-offset: 2px; }
+.editor-field-grid, .editor-planning-grid, .editor-range-grid, .creation-metrics { grid-template-columns: 1fr; }
+.creation-metrics div { min-height: 3.5rem; }
+.editor-planning-grid textarea#ideaPromptInput { min-height: 9rem; }
+.playlist-bottom-nav { position: static; display: flex; flex-wrap: wrap; margin-top: 0.7rem; box-shadow: none; backdrop-filter: none; }
+.workspace-tree { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.workspace-tree-item { margin-left: 0; }
+.workspace-node { justify-content: center; }
+.publish-account-card { display: grid; gap: 1rem; min-height: 9rem; padding: 1.15rem; border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent), transparent 74%), rgba(255,255,255,0.04)); }
+.publish-account-card > div { align-items: center; }
+.publish-account-card button { min-height: 3.3rem; width: 100%; justify-content: center; }
+.channel-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; }
+.search-filter-row { display: grid; margin: 0.75rem 0 1rem; }
+.room-stage-panel .panel-heading, .room-presence { display: none; }
+#liveView.is-room-open .room-stage-panel .panel-heading { display: none; }
+.audible-top-row { align-items: flex-start; justify-content: space-between; }
+
+@media (max-width: 760px) {
+  .workspace-tree, .channel-list, .profile-settings-modal .settings-option-grid, .mascot-picker { grid-template-columns: 1fr; }
+  .messages-drawer { inset: 5rem 0.75rem auto 0.75rem; width: auto; }
+}

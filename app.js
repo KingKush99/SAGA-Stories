@@ -64,6 +64,8 @@ const defaultState = {
     name: "Guest 4827",
     handle: "@guest4827",
     bio: "Guest audiobook creator.",
+    mascot: "G",
+    image: "",
     lastUsernameChange: ""
   },
   liveChat: defaultLiveChat,
@@ -90,6 +92,9 @@ const defaultState = {
   audioQuality: "wav",
   mastering: "audiobook",
   targetLanguage: "English",
+  ideaPrompt: "",
+  excludedStyles: "",
+  generationCount: 2,
   songStyle: "cinematic mystery narration",
   languageMode: "book",
   languageOutput: "",
@@ -99,14 +104,14 @@ const defaultState = {
     {
       id: "root",
       type: "workspace",
-      name: "Main Workspace",
+      name: "Workspace",
       children: [
         {
-          id: "series",
+          id: "drafts",
           type: "workspace",
-          name: "Series Ideas",
+          name: "Drafts",
           children: [
-            { id: "playlist-drafts", type: "playlist", name: "Draft Playlist", children: [] }
+            { id: "playlist-finished", type: "playlist", name: "Finished Products", children: [] }
           ]
         }
       ]
@@ -219,11 +224,11 @@ const otherSiteTargets = [
   { name: "YouTube Music", status: "Audio episodes", format: "Chapter videos + captions", accent: "#e06c75" }
 ];
 const publishTargets = [
-  { name: "Audible", account: "ACX / Audible", accent: "#d8a94c" },
-  { name: "Apple Books", account: "Apple Books Connect", accent: "#54b6a6" },
-  { name: "Spotify", account: "Spotify for Creators", accent: "#8ec07c" },
-  { name: "Google Play", account: "Google Play Books", accent: "#86a8e7" },
-  { name: "Direct Store", account: "SAGA Direct", accent: "#9e6fa6" }
+  { name: "Audible", account: "ACX / Audible", accent: "#d8a94c", connectUrl: "https://www.acx.com/" },
+  { name: "Apple Books", account: "Apple Books Connect", accent: "#54b6a6", connectUrl: "https://authors.apple.com/" },
+  { name: "Spotify", account: "Spotify for Creators", accent: "#8ec07c", connectUrl: "https://creators.spotify.com/" },
+  { name: "Google Play", account: "Google Play Books", accent: "#86a8e7", connectUrl: "https://play.google.com/books/publish/" },
+  { name: "Direct Store", account: "SAGA Direct", accent: "#9e6fa6", connectUrl: "" }
 ];
 const themeOptions = [
   { id: "noir", name: "Noir Grid", accent: "#54b6a6" },
@@ -363,6 +368,11 @@ function cacheElements() {
   els.chapterCount = document.getElementById("chapterCount");
   els.castCount = document.getElementById("castCount");
   els.manuscriptInput = document.getElementById("manuscriptInput");
+  els.ideaPromptInput = document.getElementById("ideaPromptInput");
+  els.excludedStylesInput = document.getElementById("excludedStylesInput");
+  els.targetWordsInput = document.getElementById("targetWordsInput");
+  els.generationCountInput = document.getElementById("generationCountInput");
+  els.imageReferenceInput = document.getElementById("imageReferenceInput");
   els.targetLanguageInput = document.getElementById("targetLanguageInput");
   els.songStyleInput = document.getElementById("songStyleInput");
   els.planSectionsInput = document.getElementById("planSectionsInput");
@@ -389,6 +399,7 @@ function cacheElements() {
   els.addOwnVoiceButton = document.getElementById("addOwnVoiceButton");
   els.ownVoiceInput = document.getElementById("ownVoiceInput");
   els.searchInput = document.getElementById("searchInput");
+  els.searchSortSelect = document.getElementById("searchSortSelect");
   els.searchResults = document.getElementById("searchResults");
   els.chapterList = document.getElementById("chapterList");
   els.linePreview = document.getElementById("linePreview");
@@ -438,6 +449,10 @@ function cacheElements() {
   els.profileLevelLabel = document.getElementById("profileLevelLabel");
   els.profileXpLabel = document.getElementById("profileXpLabel");
   els.profileEditModal = document.getElementById("profileEditModal");
+  els.profileSettingsModal = document.getElementById("profileSettingsModal");
+  els.closeProfileSettingsButton = document.getElementById("closeProfileSettingsButton");
+  els.mascotPicker = document.getElementById("mascotPicker");
+  els.profileImageInput = document.getElementById("profileImageInput");
   els.editDisplayName = document.getElementById("editDisplayName");
   els.editUsername = document.getElementById("editUsername");
   els.editBio = document.getElementById("editBio");
@@ -466,8 +481,9 @@ function bindEvents() {
   els.themePicker.addEventListener("click", handleThemeClick);
   document.getElementById("googleLoginButton").addEventListener("click", () => setStatus("Google login selected"));
   document.getElementById("settingsButton").addEventListener("click", () => setStatus("Settings opened"));
-  bindOptionalClick("profileSettingsButton", () => setStatus("Profile settings opened"));
+  bindOptionalClick("profileSettingsButton", openProfileSettings);
   bindOptionalClick("profileMailButton", () => openMessages("requests"));
+  if (els.searchSortSelect) els.searchSortSelect.addEventListener("change", renderSearchResults);
   els.searchInput.addEventListener("input", renderSearchResults);
   els.profileBackButton.addEventListener("click", goBackFromProfile);
   els.profileCloseButton.addEventListener("click", closeProfileToCreate);
@@ -477,6 +493,12 @@ function bindEvents() {
   els.profileEditModal.addEventListener("click", (event) => {
     if (event.target === els.profileEditModal) closeProfileEditor();
   });
+  if (els.profileSettingsModal) {
+    els.profileSettingsModal.addEventListener("click", (event) => {
+      if (event.target === els.profileSettingsModal) closeProfileSettings();
+    });
+  }
+  bindOptionalClick("closeProfileSettingsButton", closeProfileSettings);
   document.getElementById("closeMessagesButton").addEventListener("click", closeMessages);
   document.querySelectorAll("[data-message-tab]").forEach((button) => {
     button.addEventListener("click", () => openMessages(button.dataset.messageTab));
@@ -488,6 +510,7 @@ function bindEvents() {
       closeAppMenu();
       closeThemeModal();
       closeProfileEditor();
+      closeProfileSettings();
       closeMessages();
       hidePersonContextMenu();
       return;
@@ -580,11 +603,13 @@ function bindEvents() {
     });
   });
 
-  [els.bookTitle, els.authorName, els.genreSelect, els.manuscriptInput, els.targetLanguageInput, els.songStyleInput, els.planSectionsInput, els.languageModeSelect, els.languageOutput, els.voiceModeSelect, els.audioQualitySelect, els.masteringSelect, els.narratorCredit, els.releaseDate, els.formatSelect, els.priceInput, els.summaryInput].forEach((input) => {
+  [els.bookTitle, els.authorName, els.genreSelect, els.manuscriptInput, els.ideaPromptInput, els.excludedStylesInput, els.generationCountInput, els.targetLanguageInput, els.songStyleInput, els.planSectionsInput, els.languageModeSelect, els.languageOutput, els.voiceModeSelect, els.audioQualitySelect, els.masteringSelect, els.narratorCredit, els.releaseDate, els.formatSelect, els.priceInput, els.summaryInput].forEach((input) => {
+    if (!input) return;
     input.addEventListener("input", handleInputChange);
     input.addEventListener("change", handleInputChange);
   });
-  [els.planChaptersInput, els.planPagesInput].forEach((input) => {
+  [els.planChaptersInput, els.planPagesInput, els.targetWordsInput].forEach((input) => {
+    if (!input) return;
     input.addEventListener("input", () => handlePlanInput(false));
     input.addEventListener("change", () => handlePlanInput(true));
     input.addEventListener("blur", () => handlePlanInput(true));
@@ -620,6 +645,9 @@ function hydrateInputs() {
   els.authorName.value = state.author;
   els.genreSelect.value = state.genre;
   els.manuscriptInput.value = state.manuscript;
+  if (els.ideaPromptInput) els.ideaPromptInput.value = state.ideaPrompt || "";
+  if (els.excludedStylesInput) els.excludedStylesInput.value = state.excludedStyles || "";
+  if (els.generationCountInput) els.generationCountInput.value = String(state.generationCount || 2);
   hydratePlanInputs();
   els.targetLanguageInput.value = state.targetLanguage;
   els.songStyleInput.value = state.songStyle;
@@ -648,6 +676,9 @@ function handleInputChange() {
   state.author = els.authorName.value.trim() || "Unknown Author";
   state.genre = els.genreSelect.value;
   state.manuscript = els.manuscriptInput.value;
+  state.ideaPrompt = els.ideaPromptInput?.value.trim() || "";
+  state.excludedStyles = els.excludedStylesInput?.value.trim() || "";
+  state.generationCount = clamp(Math.round(Number(els.generationCountInput?.value) || 2), 1, 5);
   state.targetLanguage = els.targetLanguageInput.value || "English";
   state.songStyle = els.songStyleInput.value.trim() || "cinematic mystery narration";
   state.planSections = els.planSectionsInput.value.trim() || defaultState.planSections;
@@ -756,11 +787,12 @@ function toggleDictation() {
 }
 
 function appendDictationText(text) {
-  const current = els.manuscriptInput.value;
+  const target = els.ideaPromptInput || els.songStyleInput || els.manuscriptInput;
+  const current = target.value;
   const spacer = current && !current.endsWith("\n") ? "\n\n" : "";
-  els.manuscriptInput.value = `${current}${spacer}${text}`;
+  target.value = `${current}${spacer}${text}`;
   handleInputChange();
-  setStatus("Dictation added to manuscript");
+  setStatus("Dictation added to idea prompt");
 }
 
 function updateDictationButton() {
@@ -799,6 +831,7 @@ function renderOrganizationTree() {
     ? state.organizationItems
     : clone(defaultState.organizationItems);
   state.organizationItems = items;
+  normalizeOrganizationLabels(items);
   if (!findOrganizationItem(state.activeOrganizationId, items)) {
     state.activeOrganizationId = items[0]?.id || "root";
   }
@@ -812,6 +845,15 @@ function renderOrganizationTree() {
     });
   });
   renderPlaylistBottomNav(items);
+}
+
+function normalizeOrganizationLabels(items) {
+  (items || []).forEach((item) => {
+    if (item.id === "root" || item.name === "Main Workspace") item.name = "Workspace";
+    if (item.id === "series" || item.name === "Series Ideas") item.name = "Drafts";
+    if (item.id === "playlist-drafts" || item.name === "Draft Playlist") item.name = "Finished Products";
+    normalizeOrganizationLabels(item.children || []);
+  });
 }
 
 function renderPlaylistBottomNav(items) {
@@ -921,9 +963,8 @@ function switchView(viewName) {
     els.projectBanner.hidden = viewName !== "studio";
   }
   if (els.stopButton && els.previewButton) {
-    const hidePlaybackActions = viewName === "profile";
-    els.stopButton.hidden = hidePlaybackActions;
-    els.previewButton.hidden = hidePlaybackActions;
+    els.stopButton.hidden = true;
+    els.previewButton.hidden = true;
   }
   if (els.hamburgerButton) {
     els.hamburgerButton.hidden = viewName === "profile";
@@ -953,7 +994,7 @@ function isNativeActivationTarget(target) {
 }
 
 function isBlockingOverlayOpen() {
-  return !els.themeModal.hidden || !els.profileEditModal.hidden || !els.messagesDrawer.hidden;
+  return !els.themeModal.hidden || !els.profileEditModal.hidden || !els.profileSettingsModal.hidden || !els.messagesDrawer.hidden;
 }
 
 function toggleKeyboardPlayback() {
@@ -1028,7 +1069,7 @@ function syncOwnProfile() {
   profilePeople.connor.name = own.name || defaultState.profile.name;
   profilePeople.connor.handle = normalizeHandle(own.handle || defaultState.profile.handle);
   profilePeople.connor.bio = own.bio || defaultState.profile.bio;
-  profilePeople.connor.avatar = initialsForName(profilePeople.connor.name);
+  profilePeople.connor.avatar = own.mascot || initialsForName(profilePeople.connor.name);
 }
 
 function openProfile(profileId = "connor", options = {}) {
@@ -1108,6 +1149,7 @@ function openProfileEditor() {
   els.editDisplayName.value = profilePeople.connor.name;
   els.editUsername.value = profilePeople.connor.handle.replace(/^@/, "");
   els.editBio.value = profilePeople.connor.bio;
+  renderMascotPicker();
   els.profileEditModal.hidden = false;
 }
 
@@ -1148,6 +1190,42 @@ function saveProfileEditor() {
   closeProfileEditor();
   renderProfile();
   showToast("Profile updated.");
+}
+
+function renderMascotPicker() {
+  if (!els.mascotPicker) return;
+  const mascots = "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345".split("");
+  const active = state.profile.mascot || profilePeople.connor.avatar || "G";
+  els.mascotPicker.innerHTML = mascots.map((mascot, index) => `
+    <button type="button" class="${mascot === active ? "is-active" : ""}" data-mascot="${escapeHtml(mascot)}" style="--mascot-hue:${(index * 37) % 360}">${escapeHtml(mascot)}</button>
+  `).join("");
+  els.mascotPicker.querySelectorAll("[data-mascot]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.profile.mascot = button.dataset.mascot;
+      state.profile.image = "";
+      syncOwnProfile();
+      persistState();
+      renderMascotPicker();
+      renderProfile();
+    });
+  });
+  if (els.profileImageInput && !els.profileImageInput.dataset.bound) {
+    els.profileImageInput.dataset.bound = "true";
+    els.profileImageInput.addEventListener("change", handleProfileImageUpload);
+  }
+}
+
+function handleProfileImageUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.profile.image = String(reader.result || "");
+    persistState();
+    renderProfile();
+    showToast("Profile image updated.");
+  };
+  reader.readAsDataURL(file);
 }
 
 function canChangeUsername() {
@@ -1211,6 +1289,17 @@ function openMessages(tab = "requests") {
 
 function closeMessages() {
   if (els.messagesDrawer) els.messagesDrawer.hidden = true;
+}
+
+function openProfileSettings() {
+  if (!els.profileSettingsModal) return;
+  els.profileSettingsModal.hidden = false;
+  closeAppMenu();
+  setStatus("Profile settings opened");
+}
+
+function closeProfileSettings() {
+  if (els.profileSettingsModal) els.profileSettingsModal.hidden = true;
 }
 
 function handleSongSlider(field) {
@@ -1541,7 +1630,11 @@ function handlePublishAccountClick(event) {
 }
 
 function connectPublishAccount(channel) {
-  if (!publishTargets.some((target) => target.name === channel)) return;
+  const target = publishTargets.find((candidate) => candidate.name === channel);
+  if (!target) return;
+  if (target.connectUrl) {
+    window.open(target.connectUrl, "_blank", "noopener,noreferrer");
+  }
   state.connectedAccounts = {
     ...defaultState.connectedAccounts,
     ...(state.connectedAccounts || {}),
@@ -1551,7 +1644,7 @@ function connectPublishAccount(channel) {
   persistState();
   renderPublishAccounts();
   renderReleasePreview();
-  setStatus(`${channel} account connected. One-click publishing is ready.`);
+  setStatus(`${channel} connection opened. Finish sign-in in the provider portal.`);
 }
 
 function renderReleasePreview() {
@@ -1696,7 +1789,8 @@ function renderProfile() {
   syncOwnProfile();
   const person = profilePeople[state.profileFocusId] || profilePeople.connor;
   state.profileFocusId = person.id;
-  els.profileAvatarLarge.textContent = person.avatar;
+  const ownImage = person.id === "connor" ? state.profile.image : "";
+  els.profileAvatarLarge.innerHTML = ownImage ? `<img src="${escapeHtml(ownImage)}" alt="">` : escapeHtml(person.avatar);
   els.profileRole.textContent = person.role;
   els.profileDisplayName.textContent = person.name;
   els.profileHandle.textContent = person.handle;
@@ -1830,6 +1924,8 @@ function renderSearchResults() {
       type: "Audiobook",
       title: state.title || "Untitled Audiobook",
       meta: `${state.genre} - ${formatDuration(state.targetDurationSeconds)}`,
+      popularity: 98,
+      date: Date.now(),
       action: "Open",
       run: () => switchView("studio")
     },
@@ -1837,6 +1933,8 @@ function renderSearchResults() {
       type: "Live",
       title: "Book Lab",
       meta: "Live audiobook room",
+      popularity: 86,
+      date: Date.now() - 60000,
       action: "Enter",
       run: () => {
         switchView("live");
@@ -1847,6 +1945,8 @@ function renderSearchResults() {
       type: "Release",
       title: release.title,
       meta: `${release.format} - ${release.runtime}`,
+      popularity: 74,
+      date: Date.now() - 120000,
       action: "Publish",
       run: () => switchView("publish")
     },
@@ -1854,12 +1954,23 @@ function renderSearchResults() {
       type: "Shelf",
       title: "Published Audiobooks",
       meta: `${library.length || 1} saved release${(library.length || 1) === 1 ? "" : "s"}`,
+      popularity: 64,
+      date: Date.now() - 180000,
       action: "View",
       run: () => switchView("otherSites")
     }
   ].filter((item) => {
     if (!query) return true;
     return `${item.type} ${item.title} ${item.meta}`.toLowerCase().includes(query);
+  });
+  const sort = els.searchSortSelect?.value || "recommended";
+  items.sort((a, b) => {
+    if (sort === "az") return a.title.localeCompare(b.title);
+    if (sort === "za") return b.title.localeCompare(a.title);
+    if (sort === "oldest") return a.date - b.date;
+    if (sort === "newest") return b.date - a.date;
+    if (sort === "leastPopular") return a.popularity - b.popularity;
+    return b.popularity - a.popularity;
   });
   els.searchResults.innerHTML = items.length ? "" : `
     <article class="search-result-card">
@@ -1976,11 +2087,11 @@ function renderRoomStage() {
   els.roomStagePlayer.innerHTML = isEntered ? `
     <div class="audible-player">
       <div class="audible-top-row">
-        <button class="icon-button" id="roomBackButton" type="button" aria-label="Back to rooms" title="Back to rooms">
+        <button class="icon-button red-back-button" id="roomBackButton" type="button" aria-label="Back to rooms" title="Back to rooms">
           <svg class="ico"><use href="#icon-chevron-left"></use></svg>
         </button>
-        <button class="icon-button" id="roomMenuButton" type="button" aria-label="Room options" title="Room options">
-          <svg class="ico"><use href="#icon-menu"></use></svg>
+        <button class="icon-button red-close-button" id="roomMenuButton" type="button" aria-label="Close room" title="Close room">
+          <span aria-hidden="true">X</span>
         </button>
       </div>
       <div class="audible-heading">
@@ -2014,14 +2125,11 @@ function renderRoomStage() {
       </div>
     </div>
   ` : `
-    <div class="room-empty-state">
-      <strong>Select a live room</strong>
-      <span>Each room has its own audiobook player and comments.</span>
-    </div>
+    <div class="room-empty-state" hidden></div>
   `;
   if (isEntered) {
     els.roomStagePlayer.querySelector("#roomBackButton").addEventListener("click", leaveLiveRoom);
-    els.roomStagePlayer.querySelector("#roomMenuButton").addEventListener("click", () => setStatus("Room options opened"));
+    els.roomStagePlayer.querySelector("#roomMenuButton").addEventListener("click", leaveLiveRoom);
     els.roomStagePlayer.querySelector("#livePlayPauseButton").addEventListener("click", toggleLiveAudiobookPlayback);
     els.roomStagePlayer.querySelector("#liveRewindButton").addEventListener("click", () => seekLiveAudiobook(-30));
     els.roomStagePlayer.querySelector("#liveForwardButton").addEventListener("click", () => seekLiveAudiobook(30));
@@ -2088,28 +2196,53 @@ function renderOtherSites() {
 }
 
 async function createTimedBook() {
+  handleInputChange();
   readPlanInputs(true);
   const targetWords = targetWordCount();
   const chapterCount = state.targetChapters;
   const duration = formatDuration(state.targetDurationSeconds);
   const sections = planSections();
-  setStatus(`Writing ${state.targetPages} pages across ${chapterCount} chapters`);
+  const versionCount = clamp(Math.round(Number(state.generationCount) || 2), 1, 5);
+  setStatus(`Writing ${versionCount} versions across ${chapterCount} chapters`);
   const prompt = [
     `Write an original ${state.genre} audiobook manuscript titled "${state.title}" by ${state.author}.`,
+    state.ideaPrompt ? `User idea: ${state.ideaPrompt}.` : "",
+    state.songStyle ? `Preferred styles, themes, and tone: ${state.songStyle}.` : "",
+    state.excludedStyles ? `Avoid these styles: ${state.excludedStyles}.` : "",
     `Background structure only: ${state.targetPages} pages, ${chapterCount} chapters, about ${targetWords} words at ${wordsPerPage} words per page.`,
     `Estimated audiobook runtime is ${duration} at ${narrationWordsPerMinute} narrated words per minute; use this only for pacing.`,
     `Use these sections as private structure: ${sections.join("; ")}.`,
     "Return only the reader-facing manuscript: title, part/chapter headings, polished narration prose, and natural character dialogue.",
     "Do not print page targets, purpose labels, scene lists, narrator notes, character notes, production notes, or planning metadata.",
     "Make it sound like an actual book being read aloud, not a list of properties."
-  ].join("\n");
+  ].filter(Boolean).join("\n");
   const fallback = buildTimedBookDraft(targetWords, chapterCount, sections);
-  const result = sanitizeGeneratedBookText(await runTextGeneration(prompt, fallback));
+  const results = [];
+  for (let index = 0; index < versionCount; index += 1) {
+    const variantPrompt = `${prompt}\nVariation ${index + 1}: use a distinct chapter rhythm, voice texture, and audiobook word choice while preserving the same core idea.`;
+    const variantFallback = index === 0 ? fallback : buildTimedBookDraft(targetWords, chapterCount, sections)
+      .replace(state.title, `${state.title}: Version ${index + 1}`)
+      .replaceAll("The library", index % 2 ? "The archive" : "The listening room");
+    results.push(sanitizeGeneratedBookText(await runTextGeneration(variantPrompt, variantFallback)));
+  }
   state.languageOutput = "";
   if (els.languageOutput) {
     els.languageOutput.value = "";
   }
-  updateManuscriptFromText(result, `Created ${chapterCount}-chapter, ${state.targetPages}-page manuscript`);
+  results.slice().reverse().forEach((text, index) => {
+    const versionNumber = results.length - index;
+    library.unshift({
+      ...currentPackage(),
+      id: `draft-${Date.now()}-${versionNumber}`,
+      title: `${state.title} - Version ${versionNumber}`,
+      summary: storyExcerpt(text, 42),
+      status: "Draft",
+      publishedAt: new Date().toISOString()
+    });
+  });
+  saveLibrary();
+  updateManuscriptFromText(results[0], `Created ${versionCount} book version${versionCount === 1 ? "" : "s"}`);
+  renderCreateBookPlaylist();
 }
 
 async function handleGenerateBookClick() {
@@ -3754,17 +3887,21 @@ function hydratePlanInputs() {
   readPlanInputs(true);
   els.planChaptersInput.value = String(state.targetChapters);
   els.planPagesInput.value = String(state.targetPages);
+  if (els.targetWordsInput) els.targetWordsInput.value = String(targetWordCount());
 }
 
 function readPlanInputs(normalize = true) {
   const chapters = clamp(Number.parseInt(els.planChaptersInput.value, 10) || state.targetChapters || defaultState.targetChapters, 1, 80);
-  const pages = clamp(Number.parseInt(els.planPagesInput.value, 10) || state.targetPages || defaultState.targetPages, minPlannedPages, maxPlannedPages);
+  const rawWords = Number.parseInt(els.targetWordsInput?.value, 10);
+  const derivedPages = rawWords ? Math.ceil(rawWords / wordsPerPage) : Number.parseInt(els.planPagesInput.value, 10);
+  const pages = clamp(derivedPages || state.targetPages || defaultState.targetPages, minPlannedPages, maxPlannedPages);
   state.targetChapters = Math.round(chapters);
   state.targetPages = Math.round(pages);
   updateRuntimeFromPlan();
   if (normalize) {
     els.planChaptersInput.value = String(state.targetChapters);
     els.planPagesInput.value = String(state.targetPages);
+    if (els.targetWordsInput) els.targetWordsInput.value = String(targetWordCount());
   }
 }
 

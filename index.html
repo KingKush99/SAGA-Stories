@@ -6,7 +6,7 @@
     <title>ChapterForge Audiobook Studio</title>
     <link rel="icon" type="image/png" href="assets/studio-cover.png">
     <link rel="apple-touch-icon" href="assets/studio-cover.png">
-    <link rel="stylesheet" href="styles.css?v=profile-create-live-20260706">
+    <link rel="stylesheet" href="styles.css?v=ui-profile-create-publish-20260706">
   </head>
   <body>
     <svg aria-hidden="true" class="icon-sprite">
@@ -151,11 +151,11 @@
             </div>
           </div>
           <div class="top-actions">
-            <button class="ghost-button" id="stopButton" type="button">
+            <button class="ghost-button" id="stopButton" type="button" hidden>
               <svg class="ico"><use href="#icon-stop"></use></svg>
               Stop
             </button>
-            <button class="primary-button" id="previewButton" type="button">
+            <button class="primary-button" id="previewButton" type="button" hidden>
               <svg class="ico"><use href="#icon-play"></use></svg>
               Preview
             </button>
@@ -211,11 +211,6 @@
                   <svg class="ico"><use href="#icon-mic"></use></svg>
                   Dictate
                 </button>
-                <button class="icon-text-button" id="saveProjectButton" type="button">
-                  <svg class="ico"><use href="#icon-save"></use></svg>
-                  Save
-                </button>
-
               </div>
             </div>
 
@@ -284,8 +279,16 @@
                     <input id="planChaptersInput" type="number" min="1" max="80" step="1" inputmode="numeric" aria-label="Planned chapters">
                   </label>
                   <label>
+                    <span>Generation Versions</span>
+                    <input id="generationCountInput" type="number" min="1" max="5" step="1" value="2" inputmode="numeric" aria-label="Generation versions">
+                  </label>
+                  <label>
                     <span>Pages</span>
                     <input id="planPagesInput" type="number" min="10" max="500" step="1" inputmode="numeric" aria-label="Planned pages">
+                  </label>
+                  <label>
+                    <span>Words</span>
+                    <input id="targetWordsInput" type="number" min="2750" max="137500" step="250" inputmode="numeric" aria-label="Target words">
                   </label>
                   <label>
                     <span>Language</span>
@@ -306,8 +309,20 @@
 
                 <div class="editor-planning-grid">
                   <label>
-                    <span>Themes, Style, and Tone</span>
+                    <span>Book Idea</span>
+                    <textarea id="ideaPromptInput" spellcheck="true" placeholder="Describe the book idea, characters, audience, and chapter direction. Dictation writes here."></textarea>
+                  </label>
+                  <label>
+                    <span>Styles, Themes, and Tone</span>
                     <input id="songStyleInput" placeholder="cinematic mystery, calm memoir, full-cast fantasy" autocomplete="off">
+                  </label>
+                  <label>
+                    <span>Excluded Styles</span>
+                    <input id="excludedStylesInput" placeholder="no comedy, no horror, no modern slang" autocomplete="off">
+                  </label>
+                  <label>
+                    <span>Image References</span>
+                    <input id="imageReferenceInput" type="file" accept="image/*" multiple>
                   </label>
                   <label>
                     <span>Outline</span>
@@ -348,6 +363,10 @@
                       <button class="icon-text-button" id="addPlaylistButton" type="button">
                         <svg class="ico"><use href="#icon-library"></use></svg>
                         Playlist
+                      </button>
+                      <button class="icon-text-button" id="saveProjectButton" type="button">
+                        <svg class="ico"><use href="#icon-save"></use></svg>
+                        Save
                       </button>
                     </div>
                   </div>
@@ -544,6 +563,17 @@
                 <span>Find audiobooks, rooms, and releases</span>
                 <input id="searchInput" placeholder="Search SAGA Stories" autocomplete="off">
               </label>
+              <div class="search-filter-row">
+                <select id="searchSortSelect" aria-label="Sort search">
+                  <option value="recommended">Recommended</option>
+                  <option value="az">A to Z</option>
+                  <option value="za">Z to A</option>
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="popular">Most Popular</option>
+                  <option value="leastPopular">Least Popular</option>
+                </select>
+              </div>
               <div class="search-results" id="searchResults"></div>
             </section>
           </div>
@@ -817,6 +847,11 @@
               <span>Display Name</span>
               <input id="editDisplayName" maxlength="64" autocomplete="off">
             </label>
+            <div class="mascot-picker" id="mascotPicker" aria-label="Choose profile mascot"></div>
+            <label>
+              <span>Profile Image</span>
+              <input id="profileImageInput" type="file" accept="image/*">
+            </label>
             <label>
               <span>Username</span>
               <input id="editUsername" maxlength="64" autocomplete="off">
@@ -826,6 +861,32 @@
               <textarea id="editBio" maxlength="1000"></textarea>
             </label>
             <button class="primary-button" id="saveProfileEditButton" type="button">Save Profile</button>
+          </section>
+        </div>
+
+        <div class="modal-backdrop" id="profileSettingsModal" hidden>
+          <section class="modal-card profile-settings-modal" aria-labelledby="profileSettingsHeading">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Settings</p>
+                <h2 id="profileSettingsHeading">Profile Settings</h2>
+              </div>
+              <button class="icon-button red-close-button" id="closeProfileSettingsButton" type="button" aria-label="Close settings" title="Close settings">
+                <span aria-hidden="true">X</span>
+              </button>
+            </div>
+            <div class="settings-option-grid">
+              <button type="button">Theme Settings</button>
+              <button type="button">Notification Settings</button>
+              <button type="button">Audio Settings</button>
+              <button type="button">Visual Settings</button>
+              <button type="button">Privacy Settings</button>
+              <button type="button">Account Settings</button>
+              <button type="button">Publishing Settings</button>
+              <button type="button">Voice Studio Settings</button>
+              <button type="button">Workspace Settings</button>
+              <button type="button">Billing Settings</button>
+            </div>
           </section>
         </div>
 
@@ -861,6 +922,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=profile-create-live-20260706"></script>
+    <script src="app.js?v=ui-profile-create-publish-20260706"></script>
   </body>
 </html>
