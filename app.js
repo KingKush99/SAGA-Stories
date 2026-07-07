@@ -1837,19 +1837,16 @@ function renderPublishAccounts() {
     const connected = Boolean(state.connectedAccounts?.[target.name]);
     return `
       <article class="publish-account-card${connected ? " is-connected" : ""}${index === state.publishCarouselIndex ? " is-active" : ""}" style="--accent:${target.accent}" ${index === state.publishCarouselIndex ? "" : "hidden"}>
-        <div>
-          <span class="publish-account-mark">${escapeHtml(target.name.slice(0, 2).toUpperCase())}</span>
-          <span>
-            <strong>${escapeHtml(target.name)}</strong>
-            <small>${connected ? `Connected to ${target.account}` : `Connect ${target.account}`}</small>
-          </span>
+        <div class="publish-platform-center">
+          <strong>${escapeHtml(target.name)}</strong>
+          <small>${connected ? `Connected to ${target.account}` : `Connect ${target.account}`}</small>
         </div>
         ${connected ? `<span class="publish-connected-pill">Connected</span>` : `<button class="icon-text-button" type="button" data-publish-action="connect" data-channel="${escapeHtml(target.name)}"><svg class="ico"><use href="#icon-user-circle"></use></svg>Connect account</button>`}
       </article>
     `;
   }).join("");
   if (els.publishDots) {
-    els.publishDots.innerHTML = publishTargets.map((target, index) => `<button type="button" class="${index === state.publishCarouselIndex ? "is-active" : ""}" data-publish-dot="${index}" aria-label="Show ${escapeHtml(target.name)}">${index + 1}</button>`).join("");
+    els.publishDots.innerHTML = publishTargets.map((target, index) => `<button type="button" class="${index === state.publishCarouselIndex ? "is-active" : ""}" data-publish-dot="${index}" aria-label="Show ${escapeHtml(target.name)}"></button>`).join("");
     els.publishDots.querySelectorAll("[data-publish-dot]").forEach((button) => {
       button.addEventListener("click", () => {
         state.publishCarouselIndex = Number(button.dataset.publishDot);
@@ -2288,22 +2285,22 @@ function enterCatalogRoom(item) {
 
 function renderLiveRoomCard(item) {
   const card = document.createElement("article");
+  const estimatedWords = Math.max(1, Math.round(item.minutes * narrationWordsPerMinute));
   card.className = "live-room-card image-room-card";
   card.tabIndex = 0;
   card.setAttribute("role", "button");
   card.setAttribute("aria-label", `Enter ${item.title}`);
   card.style.setProperty("--accent", item.accent);
   card.innerHTML = `
-    <div class="catalog-cover" style="--cover-hue:${(item.popularity * 3) % 360};--cover-alt:${(item.minutes * 5) % 360}">
-      <span>${escapeHtml(item.genre.slice(0, 2).toUpperCase())}</span>
+    <div class="catalog-cover" style="--cover-hue:${(item.popularity * 3) % 360};--cover-alt:${(item.minutes * 5) % 360}"></div>
+    <div class="live-room-meta-strip">
+      <span>${formatNumber(estimatedWords)} words</span>
+      <span>${formatNumber(item.minutes)} min</span>
     </div>
     <div class="image-room-overlay">
       <strong>${escapeHtml(item.title)}</strong>
       <span>${formatNumber(item.listeners)} listening</span>
     </div>
-    <button class="live-enter-button" type="button" aria-label="Enter ${escapeHtml(item.title)}">
-      <svg class="ico"><use href="#icon-video"></use></svg>
-    </button>
   `;
   const enter = () => enterCatalogRoom(item);
   card.addEventListener("click", enter);
@@ -2312,10 +2309,6 @@ function renderLiveRoomCard(item) {
       event.preventDefault();
       enter();
     }
-  });
-  card.querySelector("button").addEventListener("click", (event) => {
-    event.stopPropagation();
-    enter();
   });
   return card;
 }
@@ -2338,6 +2331,7 @@ function renderRoomStage() {
   els.roomStagePlayer.style.setProperty("--room-bg", room.gradient);
   const duration = liveTrackDurationSeconds();
   const remaining = Math.max(0, duration - liveAudioProgressSeconds);
+  const livePage = currentLivePage();
   els.roomStagePlayer.innerHTML = isEntered ? `
     <div class="audible-player">
       <div class="audible-top-row">
@@ -2352,7 +2346,13 @@ function renderRoomStage() {
         <span>Chapter ${track.index}</span>
         <strong>${escapeHtml(track.title)}</strong>
       </div>
-      <p class="audible-story-preview">${escapeHtml(track.excerpt || room.description)}</p>
+      <article class="live-page-reader" aria-label="Current audiobook page">
+        <header>
+          <span id="livePageNumber">Page ${livePage.page} / ${livePage.totalPages}</span>
+          <span id="livePageWords">${formatNumber(livePage.words)} words</span>
+        </header>
+        <p id="livePageText">${escapeHtml(livePage.text)}</p>
+      </article>
       <input id="liveAudioProgress" type="range" min="0" max="${duration}" value="${Math.round(liveAudioProgressSeconds)}" aria-label="Live audiobook progress">
       <span class="audible-remaining">${formatSongTime(remaining)} remaining</span>
       <div class="audible-cover">
@@ -2378,6 +2378,7 @@ function renderRoomStage() {
         <button type="button" id="liveShareBookButton">Share<span>Book</span></button>
       </div>
       <div class="live-chapter-menu" id="liveChapterMenu" hidden></div>
+      <div class="live-share-menu" id="liveShareMenu" hidden></div>
     </div>
   ` : `
     <div class="room-empty-state" hidden></div>
@@ -2842,6 +2843,13 @@ function updateLiveAudioProgressUi() {
   if (remainingLabel) {
     remainingLabel.textContent = `${formatSongTime(remaining)} remaining`;
   }
+  const livePage = currentLivePage();
+  const pageNumber = document.getElementById("livePageNumber");
+  const pageWords = document.getElementById("livePageWords");
+  const pageText = document.getElementById("livePageText");
+  if (pageNumber) pageNumber.textContent = `Page ${livePage.page} / ${livePage.totalPages}`;
+  if (pageWords) pageWords.textContent = `${formatNumber(livePage.words)} words`;
+  if (pageText) pageText.textContent = livePage.text;
   const playButton = document.getElementById("livePlayPauseButton");
   if (playButton) {
     playButton.setAttribute("aria-label", liveAudioPlaying ? "Pause audiobook" : "Play audiobook");
@@ -2883,20 +2891,97 @@ function toggleLiveChapterList() {
 }
 
 async function shareLiveAudio(scope) {
+  const menu = document.getElementById("liveShareMenu");
+  if (menu) {
+    menu.hidden = !menu.hidden;
+    if (!menu.hidden) {
+      menu.innerHTML = shareTargets().map((target) => `
+        <button type="button" data-share-target="${escapeHtml(target.id)}">
+          <strong>${escapeHtml(target.label)}</strong>
+          <span>${escapeHtml(target.description)}</span>
+        </button>
+      `).join("");
+      menu.querySelectorAll("[data-share-target]").forEach((button) => {
+        button.addEventListener("click", () => openShareTarget(scope, button.dataset.shareTarget));
+      });
+    }
+    return;
+  }
+  await openShareTarget(scope, "native");
+}
+
+function shareTargets() {
+  return [
+    { id: "x", label: "X", description: "Post a share link" },
+    { id: "facebook", label: "Facebook", description: "Share to feed" },
+    { id: "instagram", label: "Instagram", description: "Copy for story or DM" },
+    { id: "mail", label: "Mail", description: "Send by email" },
+    { id: "whatsapp", label: "WhatsApp", description: "Send to chats" },
+    { id: "podcast", label: "Podcast Apps", description: "Use system share" }
+  ];
+}
+
+async function openShareTarget(scope, targetId) {
   const track = activeLiveTrack();
   const text = scope === "section"
     ? `${state.title}: ${track.title}`
     : `${state.title} by ${state.author}`;
+  const url = window.location.href.split("#")[0];
+  const message = `${text}\n${url}`;
+  const encodedText = encodeURIComponent(text);
+  const encodedMessage = encodeURIComponent(message);
+  const encodedUrl = encodeURIComponent(url);
   try {
-    if (navigator.share) {
-      await navigator.share({ title: state.title, text });
+    if (targetId === "x") {
+      window.open(`https://twitter.com/intent/tweet?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+    } else if (targetId === "facebook") {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`, "_blank", "noopener,noreferrer");
+    } else if (targetId === "mail") {
+      window.location.href = `mailto:?subject=${encodeURIComponent(state.title)}&body=${encodedMessage}`;
+    } else if (targetId === "whatsapp") {
+      window.open(`https://wa.me/?text=${encodedMessage}`, "_blank", "noopener,noreferrer");
+    } else if (navigator.share) {
+      await navigator.share({ title: state.title, text: message, url });
     } else if (navigator.clipboard) {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(message);
     }
-    setStatus(scope === "section" ? "Section share ready" : "Audiobook share ready");
+    if (targetId === "instagram") {
+      if (navigator.clipboard) await navigator.clipboard.writeText(message);
+      setStatus("Copied for Instagram story or DM");
+      return;
+    }
+    if (targetId === "podcast" && !navigator.share && navigator.clipboard) {
+      await navigator.clipboard.writeText(message);
+      setStatus("Copied for podcast app sharing");
+      return;
+    }
+    setStatus(scope === "section" ? "Section share opened" : "Audiobook share opened");
   } catch {
     setStatus("Share canceled");
   }
+}
+
+function currentLivePage() {
+  const chapter = activeChapter();
+  const source = chapter.lines.length
+    ? chapter.lines.map((line) => line.text).join(" ")
+    : state.manuscript || state.summary || state.title;
+  const words = String(source || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+  const pageSize = wordsPerPage;
+  const totalPages = Math.max(1, Math.ceil(words.length / pageSize));
+  const duration = liveTrackDurationSeconds();
+  const pageIndex = clamp(Math.floor((liveAudioProgressSeconds / Math.max(1, duration)) * totalPages), 0, totalPages - 1);
+  const pageWords = words.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+  return {
+    page: pageIndex + 1,
+    totalPages,
+    words: pageWords.length,
+    text: pageWords.join(" ") || activeLiveTrack().excerpt || selectedLiveRoom().description
+  };
 }
 
 function liveTrackDurationSeconds() {
