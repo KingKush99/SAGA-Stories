@@ -666,8 +666,8 @@ function bindEvents() {
   });
   els.songPlayPauseButton.addEventListener("click", toggleSongPlayback);
   els.songProgress.addEventListener("input", () => seekSongProgress(Number(els.songProgress.value)));
-  els.weirdnessRange.addEventListener("input", () => handleSongSlider("weirdness"));
-  els.styleInfluenceRange.addEventListener("input", () => handleSongSlider("styleInfluence"));
+  if (els.weirdnessRange) els.weirdnessRange.addEventListener("input", () => handleSongSlider("weirdness"));
+  if (els.styleInfluenceRange) els.styleInfluenceRange.addEventListener("input", () => handleSongSlider("styleInfluence"));
   document.querySelectorAll(".suno-tab").forEach((button) => {
     button.addEventListener("click", () => {
       document.querySelectorAll(".suno-tab").forEach((tab) => tab.classList.toggle("is-active", tab === button));
@@ -736,8 +736,8 @@ function hydrateInputs() {
   els.planSectionsInput.value = state.planSections;
   els.languageModeSelect.value = normalizeLanguageMode(state.languageMode);
   els.languageOutput.value = state.languageOutput;
-  els.weirdnessRange.value = String(state.weirdness);
-  els.styleInfluenceRange.value = String(state.styleInfluence);
+  if (els.weirdnessRange) els.weirdnessRange.value = String(state.weirdness);
+  if (els.styleInfluenceRange) els.styleInfluenceRange.value = String(state.styleInfluence);
   updateSongSliderLabels();
   els.voiceModeSelect.value = state.voiceMode;
   els.ttsApiKey.value = sessionStorage.getItem("chapterforge-openai-key") || "";
