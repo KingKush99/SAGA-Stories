@@ -2389,7 +2389,7 @@ function renderRoomStage() {
           <span id="livePageNumber">Page ${livePage.page} / ${livePage.totalPages}</span>
           <span id="livePageWords">${formatNumber(livePage.words)} words</span>
         </header>
-        <p id="livePageText">${livePageHtml(livePage)}</p>
+        <div id="livePageText" class="live-page-text">${livePageHtml(livePage)}</div>
       </article>
       <input id="liveAudioProgress" type="range" min="0" max="${duration}" value="${Math.round(liveAudioProgressSeconds)}" aria-label="Live audiobook progress">
       <span class="audible-time-readout" id="liveTimeReadout">${formatSongTime(liveAudioProgressSeconds)} / ${formatSongTime(duration)}</span>
@@ -3089,10 +3089,44 @@ function livePageHtml(livePage) {
     ? livePage.pageWords
     : String(livePage.text || "").split(/\s+/).filter(Boolean);
   if (!pageWords.length) return escapeHtml(livePage.text || "");
-  return pageWords.map((word, index) => {
-    const className = index === livePage.activeWordIndex ? " class=\"live-current-word\"" : "";
-    return `<span${className}>${escapeHtml(word)}</span>`;
-  }).join(" ");
+  return paragraphChunksForWords(pageWords, livePage.activeWordIndex)
+    .map((paragraph) => {
+      const sentences = paragraph.sentences.map((sentence) => {
+        const className = sentence.active ? " class=\"live-current-sentence\"" : "";
+        return `<span${className}>${escapeHtml(sentence.text)}</span>`;
+      }).join(" ");
+      return `<p>${sentences}</p>`;
+    }).join("");
+}
+
+function paragraphChunksForWords(words, activeWordIndex) {
+  const paragraphs = [];
+  let currentParagraph = [];
+  let currentSentence = [];
+  let sentenceStart = 0;
+  words.forEach((word, index) => {
+    currentSentence.push(word);
+    const closesSentence = /[.!?]"?$/.test(word) || currentSentence.length >= 26;
+    if (closesSentence || index === words.length - 1) {
+      currentParagraph.push({
+        text: currentSentence.join(" "),
+        start: sentenceStart,
+        end: index
+      });
+      currentSentence = [];
+      sentenceStart = index + 1;
+    }
+    if (currentParagraph.length >= 4 || index === words.length - 1) {
+      paragraphs.push({
+        sentences: currentParagraph.map((sentence) => ({
+          text: sentence.text,
+          active: activeWordIndex >= sentence.start && activeWordIndex <= sentence.end
+        }))
+      });
+      currentParagraph = [];
+    }
+  });
+  return paragraphs;
 }
 
 function liveAudiobookLinesFromProgress() {
