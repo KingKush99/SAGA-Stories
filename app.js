@@ -3092,8 +3092,10 @@ function livePageHtml(livePage) {
   return paragraphChunksForWords(pageWords, livePage.activeWordIndex)
     .map((paragraph) => {
       const sentences = paragraph.sentences.map((sentence) => {
-        const className = sentence.active ? " class=\"live-current-sentence\"" : "";
-        return `<span${className}>${escapeHtml(sentence.text)}</span>`;
+        if (sentence.active) {
+          return `<mark class="live-current-sentence">${escapeHtml(sentence.text)}</mark>`;
+        }
+        return escapeHtml(sentence.text);
       }).join(" ");
       return `<p>${sentences}</p>`;
     }).join("");
