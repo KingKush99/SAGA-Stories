@@ -2384,9 +2384,6 @@ function renderRoomStage() {
         <span>Chapter ${track.index} - ${formatNumber(track.words)} chapter words - ${formatNumber(actualBookWords)} book words</span>
         <strong>${escapeHtml(track.title)}</strong>
       </div>
-      <div class="audible-cover podcast-cover-art">
-        <span>${escapeHtml(state.title || room.title)}</span>
-      </div>
       <article class="live-page-reader" aria-label="Current audiobook page">
         <header>
           <span id="livePageNumber">Page ${livePage.page} / ${livePage.totalPages}</span>
@@ -2394,6 +2391,9 @@ function renderRoomStage() {
         </header>
         <div id="livePageText" class="live-page-text">${livePageHtml(livePage)}</div>
       </article>
+      <div class="audible-cover podcast-cover-art">
+        <span>${escapeHtml(state.title || room.title)}</span>
+      </div>
       <input id="liveAudioProgress" type="range" min="0" max="${duration}" value="${Math.round(liveAudioProgressSeconds)}" aria-label="Live audiobook progress">
       <span class="audible-time-readout" id="liveTimeReadout">${formatSongTime(liveAudioProgressSeconds)} / ${formatSongTime(duration)}</span>
       <div class="audible-controls">
@@ -3611,14 +3611,15 @@ function parseManuscript(text) {
   const rawLines = text.split(/\r?\n/);
   const lines = [];
   const chapters = [];
-  let currentChapter = { title: "Opening", lines: [] };
+  const prefaceLines = [];
+  let currentChapter = null;
   const speakerPattern = /^([A-Za-z][A-Za-z0-9 .'-]{0,38}):\s*(.+)$/;
 
   rawLines.forEach((raw) => {
     const trimmed = raw.trim();
     if (!trimmed) return;
     if (/^chapter\s+\d+/i.test(trimmed)) {
-      if (currentChapter.lines.length) chapters.push(currentChapter);
+      if (currentChapter?.lines.length) chapters.push(currentChapter);
       currentChapter = { title: trimmed, lines: [] };
       return;
     }
@@ -3631,11 +3632,15 @@ function parseManuscript(text) {
       text: match ? match[2].trim() : trimmed
     };
     lines.push(line);
-    currentChapter.lines.push(line);
+    if (currentChapter) {
+      currentChapter.lines.push(line);
+    } else {
+      prefaceLines.push(line);
+    }
   });
 
-  if (currentChapter.lines.length) chapters.push(currentChapter);
-  if (!chapters.length) chapters.push({ title: "Manuscript", lines });
+  if (currentChapter?.lines.length) chapters.push(currentChapter);
+  if (!chapters.length) chapters.push({ title: "Manuscript", lines: prefaceLines.length ? prefaceLines : lines });
   return { lines, chapters };
 }
 
