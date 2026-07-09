@@ -388,6 +388,7 @@ input:focus, select:focus, textarea:focus { border-color: rgba(84, 182, 166, 0.7
 .voice-console { display: grid; grid-template-columns: repeat(4, minmax(11rem, 1fr)) minmax(18rem, 1.25fr); gap: 0.75rem; align-items: end; margin-bottom: 1rem; }
 
 .voice-inventory { min-height: 2.6rem; display: flex; align-items: center; padding: 0.65rem 0.75rem; border: 1px solid rgba(84, 182, 166, 0.24); border-radius: 8px; color: var(--soft); background: rgba(84, 182, 166, 0.08); font-size: 0.82rem; font-weight: 750; line-height: 1.35; }
+.voice-inventory.is-hd { border-color: rgba(248, 213, 91, 0.55); color: #fff8df; background: linear-gradient(135deg, rgba(248, 213, 91, 0.18), rgba(84, 182, 166, 0.12)); box-shadow: 0 0 1.2rem rgba(248, 213, 91, 0.12); }
 
 .add-character-row { grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1fr) auto; align-items: end; }
 

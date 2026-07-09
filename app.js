@@ -94,8 +94,8 @@ const defaultState = {
   price: "Free",
   summary: "A character-driven fantasy audiobook about a hidden library, a living map, and the voices needed to unlock a lost city.",
   channels: ["Audible", "Apple Books", "Spotify", "Direct Store"],
-  voiceMode: "openvoice",
-  voiceUpgradeVersion: 3,
+  voiceMode: "openai",
+  voiceUpgradeVersion: 4,
   audioQuality: "wav",
   mastering: "audiobook",
   targetLanguage: "English",
@@ -1811,7 +1811,7 @@ function renderVoiceInventory() {
   if (!els.voiceInventory) return;
   if (state.voiceMode === "openvoice") {
     const customLabel = state.customVoiceName ? ` Custom voice: ${state.customVoiceName}.` : "";
-    els.voiceInventory.textContent = `Open Voice HD selected. Connect a local Piper or OpenVoice service for free neural voices; browser voices are only fallback.${customLabel}`;
+    els.voiceInventory.textContent = `Local Open Voice selected. Connect a local Piper/OpenVoice renderer for neural voices; browser voices are fallback only.${customLabel}`;
     return;
   }
   if (state.voiceMode === "openai") {
@@ -1819,8 +1819,8 @@ function renderVoiceInventory() {
     const formatLabel = state.audioQuality === "wav" ? "Ultra HD WAV" : state.audioQuality.toUpperCase();
     const customLabel = state.customVoiceName ? ` Custom voice: ${state.customVoiceName}.` : "";
     els.voiceInventory.textContent = keyReady
-      ? `OpenAI HD ready: ${formatLabel}, ${titleCase(state.mastering)} mastering, per-character HD voices.${customLabel}`
-      : `OpenAI HD selected. Add a session API key to hear the higher-quality voices; browser voices stay as fallback.${customLabel}`;
+      ? `OpenAI HD ready: ${formatLabel}, ${titleCase(state.mastering)} mastering, per-character premium voices.${customLabel}`
+      : `OpenAI HD selected. Paste an API key here to bypass Microsoft/browser voices; browser speech is fallback only.${customLabel}`;
     return;
   }
   if (!("speechSynthesis" in window)) {
@@ -2819,7 +2819,7 @@ function startLiveAudiobookPlayback() {
     }
     state.activeChapterIndex = Math.min(state.activeTrackIndex, Math.max(0, parsedBook.chapters.length - 1));
     liveAudioPlaying = true;
-    speakBrowserQueue(lines);
+    speakQueue(lines);
   }
   liveAudioPlaying = true;
   startLiveAudioTimer();
@@ -3921,7 +3921,7 @@ function speakQueue(lines) {
   if (state.voiceMode === "openvoice") {
     setStatus("Open Voice HD is selected. Connect a local Piper/OpenVoice service for final render; using browser preview now.");
   } else if (state.voiceMode === "openai") {
-    setStatus("OpenAI HD needs a session API key. Using browser fallback for now.");
+    setStatus("OpenAI HD needs a session API key. Paste one in Voice Studio to avoid browser/Microsoft voices.");
   }
   speakBrowserQueue(lines);
 }
@@ -4000,7 +4000,7 @@ function speakText(text, castId) {
   if (state.voiceMode === "openvoice") {
     setStatus("Open Voice HD is selected. Connect a local Piper/OpenVoice service for final render; using browser preview now.");
   } else if (state.voiceMode === "openai") {
-    setStatus("OpenAI HD needs a session API key. Using browser fallback for now.");
+    setStatus("OpenAI HD needs a session API key. Paste one in Voice Studio to avoid browser/Microsoft voices.");
   }
   speakBrowserText(text, castId);
 }
@@ -4671,9 +4671,9 @@ function loadState() {
       merged.profile.handle = defaultState.profile.handle;
       merged.profile.bio = defaultState.profile.bio;
     }
-    if ((saved.voiceUpgradeVersion || 0) < 3) {
-      merged.voiceMode = "openvoice";
-      merged.voiceUpgradeVersion = 3;
+    if ((saved.voiceUpgradeVersion || 0) < 4) {
+      merged.voiceMode = "openai";
+      merged.voiceUpgradeVersion = 4;
     }
     if ((saved.planModelVersion || 0) < 1) {
       merged.targetLanguage = "English";

@@ -6,7 +6,7 @@
     <title>ChapterForge Audiobook Studio</title>
     <link rel="icon" type="image/png" href="assets/studio-cover.png">
     <link rel="apple-touch-icon" href="assets/studio-cover.png">
-    <link rel="stylesheet" href="styles.css?v=live-sentence-word-highlight-20260709">
+    <link rel="stylesheet" href="styles.css?v=hd-voice-default-live-20260709">
   </head>
   <body>
     <svg aria-hidden="true" class="icon-sprite">
@@ -372,7 +372,6 @@
                 </div>
                 <div class="create-book-playlist" id="createBookPlaylist"></div>
               </aside>
-              <div hidden>
               <aside class="tool-panel voice-studio-panel">
                 <div class="panel-heading">
                   <div>
@@ -388,8 +387,8 @@
                   <label>
                     <span>Voice Engine</span>
                     <select id="voiceModeSelect">
-                      <option value="openvoice">Open Voice HD</option>
-                      <option value="openai">OpenAI HD</option>
+                      <option value="openai">OpenAI HD (recommended)</option>
+                      <option value="openvoice">Local Open Voice</option>
                       <option value="studio">Studio Neural</option>
                       <option value="neural">Cloud/Neural Only</option>
                       <option value="browser">Browser Fallback</option>
@@ -397,7 +396,7 @@
                   </label>
                   <label>
                     <span>HD API Key</span>
-                    <input id="ttsApiKey" type="password" placeholder="Only stored for this session" autocomplete="off">
+                    <input id="ttsApiKey" type="password" placeholder="Paste OpenAI key for HD playback" autocomplete="off">
                   </label>
                   <label>
                     <span>Audio Quality</span>
@@ -416,7 +415,7 @@
                       <option value="raw">Raw</option>
                     </select>
                   </label>
-                  <div class="voice-inventory" id="voiceInventory">Scanning voices...</div>
+                  <div class="voice-inventory is-hd" id="voiceInventory">OpenAI HD is the default. Add a key for premium voices; browser voices are fallback only.</div>
                 </div>
                 <div class="add-character-row">
                   <label>
@@ -926,6 +925,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=live-sentence-word-highlight-20260709"></script>
+    <script src="app.js?v=hd-voice-default-live-20260709"></script>
   </body>
 </html>
