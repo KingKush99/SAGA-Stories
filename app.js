@@ -324,7 +324,8 @@ function buildAudiobookCatalog(count) {
       category: index < 40 ? "New" : index % 3 === 0 ? "Popular" : "Oldest / Longest",
       listeners: 40 + ((index * 91) % 9400),
       popularity: 30 + ((index * 47) % 70),
-      minutes: 25 + ((index * 17) % 980),
+      minutes: 260 + ((index * 17) % 190),
+      words: 40000 + ((index * 1379) % 26000),
       date: Date.now() - index * 86400000,
       accent: accentColors[index % accentColors.length],
       image: "assets/studio-cover.png"
@@ -366,7 +367,10 @@ let liveAudioTimer = null;
 let liveAudioPlaying = false;
 let liveAudioProgressSeconds = 0;
 let livePlaybackRate = 1;
+let liveVolume = 1;
 let openedBookComments = null;
+let searchSortMode = 'recommended';
+const searchSortDirections = { popular: -1, alphabetical: 1, age: -1 };
 let dictationRecognizer = null;
 let dictationActive = false;
 
@@ -412,7 +416,7 @@ function cacheElements() {
   els.runtimeEstimate = document.getElementById("runtimeEstimate");
   els.pageCountDisplay = document.getElementById("pageCountDisplay");
   els.targetWordCountDisplay = document.getElementById("targetWordCountDisplay");
-  els.scriptRuntimeEstimate = document.getElementById("scriptRuntimeEstimate");
+  if (els.scriptRuntimeEstimate) els.scriptRuntimeEstimate.textContent = String(minutes) + 'm';
   els.planChaptersInput = document.getElementById("planChaptersInput");
   els.planPagesInput = document.getElementById("planPagesInput");
   els.chapterCount = document.getElementById("chapterCount");
@@ -451,7 +455,7 @@ function cacheElements() {
   els.addOwnVoiceButton = document.getElementById("addOwnVoiceButton");
   els.ownVoiceInput = document.getElementById("ownVoiceInput");
   els.searchInput = document.getElementById("searchInput");
-  els.searchSortSelect = document.getElementById("searchSortSelect");
+  els.searchSortButtons = Array.from(document.querySelectorAll("[data-search-sort]"));
   els.searchResults = document.getElementById("searchResults");
   els.dailyLoginButton = document.getElementById("dailyLoginButton");
   els.dailyLoginModal = document.getElementById("dailyLoginModal");
@@ -545,7 +549,7 @@ function bindEvents() {
   bindOptionalClick("dailyLoginButton", openDailyLogin);
   bindOptionalClick("profileSettingsButton", openProfileSettings);
   bindOptionalClick("profileMailButton", () => openMessages("requests"));
-  if (els.searchSortSelect) els.searchSortSelect.addEventListener("change", renderSearchResults);
+  els.searchSortButtons.forEach((button) => button.addEventListener("click", () => handleSearchSortClick(button.dataset.searchSort)));
   els.searchInput.addEventListener("input", renderSearchResults);
   els.profileBackButton.addEventListener("click", goBackFromProfile);
   els.profileCloseButton.addEventListener("click", closeProfileToCreate);
@@ -1556,13 +1560,13 @@ function renderStats() {
   const minutes = estimateMinutes(words);
   updateRuntimeFromPlan();
   const targetWords = targetWordCount();
-  els.wordCount.textContent = formatNumber(words);
-  els.pageCountDisplay.textContent = formatNumber(state.targetPages);
-  els.runtimeEstimate.textContent = formatDuration(state.targetDurationSeconds);
-  els.targetWordCountDisplay.textContent = formatNumber(targetWords);
-  els.scriptRuntimeEstimate.textContent = `${minutes}m`;
-  els.chapterCount.textContent = String(state.targetChapters);
-  els.castCount.textContent = String(activeCastCharacters().length);
+  if (els.wordCount) els.wordCount.textContent = formatNumber(words);
+  if (els.pageCountDisplay) els.pageCountDisplay.textContent = formatNumber(state.targetPages);
+  if (els.runtimeEstimate) els.runtimeEstimate.textContent = formatDuration(state.targetDurationSeconds);
+  if (els.targetWordCountDisplay) els.targetWordCountDisplay.textContent = formatNumber(targetWords);
+  if (els.scriptRuntimeEstimate) els.scriptRuntimeEstimate.textContent = String(minutes) + 'm';
+  if (els.chapterCount) els.chapterCount.textContent = String(state.targetChapters);
+  if (els.castCount) els.castCount.textContent = String(activeCastCharacters().length);
 }
 
 function renderChapters() {
@@ -2199,6 +2203,14 @@ function renderMessages() {
   `).join("");
 }
 
+function handleSearchSortClick(mode) {
+  if (!mode) return;
+  if (mode === 'recommended') searchSortMode = 'recommended';
+  else if (searchSortMode === mode) searchSortDirections[mode] = (searchSortDirections[mode] || 1) * -1;
+  else searchSortMode = mode;
+  renderSearchResults();
+}
+
 function renderSearchResults() {
   if (!els.searchResults) return;
   const query = (els.searchInput?.value || "").trim().toLowerCase();
@@ -2206,14 +2218,19 @@ function renderSearchResults() {
     if (!query) return true;
     return `${item.genre} ${item.title} ${item.category}`.toLowerCase().includes(query);
   });
-  const sort = els.searchSortSelect?.value || "recommended";
+  const sort = searchSortMode || 'recommended';
+  if (els.searchSortButtons) els.searchSortButtons.forEach((button) => {
+    const mode = button.dataset.searchSort || 'recommended';
+    const active = mode === sort;
+    button.classList.toggle('is-active', active);
+    const suffix = active && mode !== 'recommended' ? ((searchSortDirections[mode] || 1) > 0 ? ' Up' : ' Down') : '';
+    button.textContent = mode === 'age' ? 'Age' + suffix : titleCase(mode) + suffix;
+  });
   items.sort((a, b) => {
-    if (sort === "az") return a.title.localeCompare(b.title);
-    if (sort === "za") return b.title.localeCompare(a.title);
-    if (sort === "oldest") return a.date - b.date;
-    if (sort === "newest") return b.date - a.date;
-    if (sort === "leastPopular") return a.popularity - b.popularity;
-    return b.popularity - a.popularity;
+    if (sort === 'alphabetical') return (searchSortDirections.alphabetical || 1) * a.title.localeCompare(b.title);
+    if (sort === 'age') return (searchSortDirections.age || -1) * (b.date - a.date);
+    if (sort === 'popular') return (searchSortDirections.popular || -1) * (b.popularity - a.popularity);
+    return (b.popularity - a.popularity) || (b.date - a.date);
   });
   els.searchResults.innerHTML = items.length ? "" : `
     <article class="search-result-card">
@@ -2231,7 +2248,7 @@ function renderSearchResults() {
       </div>
       <span>${escapeHtml(item.genre)} - ${escapeHtml(item.category)}</span>
       <strong>${escapeHtml(item.title)}</strong>
-      <small>${formatNumber(item.listeners)} listeners - ${formatNumber(item.minutes)} min</small>
+      <small>${formatNumber(item.listeners)} listeners - ${formatNumber(Math.max(40000, item.words || Math.round(item.minutes * narrationWordsPerMinute)))} words - ${formatNumber(item.minutes)} min</small>
       <button class="icon-text-button" type="button">Enter</button>
     `;
     card.querySelector("button").addEventListener("click", () => {
@@ -2278,6 +2295,17 @@ function renderLiveRooms() {
 
 function enterCatalogRoom(item) {
   const roomId = liveRooms[Math.abs(item.id.length + item.title.length) % liveRooms.length].id;
+  const targetWords = Math.max(40000, Number(item.words) || Math.round((item.minutes || 260) * narrationWordsPerMinute));
+  const chapterCount = clamp(Math.round(targetWords / 4500), 8, 18);
+  state.title = item.title;
+  state.genre = item.genre;
+  state.targetPages = clamp(Math.ceil(targetWords / wordsPerPage), minPlannedPages, maxPlannedPages);
+  state.targetChapters = chapterCount;
+  state.targetDurationSeconds = clampDuration(Math.ceil((targetWords / narrationWordsPerMinute) * 60));
+  state.manuscript = buildTimedBookDraft(targetWords, chapterCount, [item.genre, item.category, item.title]);
+  parsedBook = parseManuscript(state.manuscript);
+  state.activeTrackIndex = 0;
+  state.activeChapterIndex = 0;
   enterLiveRoom(roomId);
   state.activeRoomId = roomId;
   els.roomStageTitle.textContent = item.title;
@@ -2285,7 +2313,7 @@ function enterCatalogRoom(item) {
 
 function renderLiveRoomCard(item) {
   const card = document.createElement("article");
-  const estimatedWords = Math.max(1, Math.round(item.minutes * narrationWordsPerMinute));
+  const estimatedWords = Math.max(40000, Number(item.words) || Math.round(item.minutes * narrationWordsPerMinute));
   card.className = "live-room-card image-room-card";
   card.tabIndex = 0;
   card.setAttribute("role", "button");
@@ -2346,6 +2374,9 @@ function renderRoomStage() {
         <span>Chapter ${track.index}</span>
         <strong>${escapeHtml(track.title)}</strong>
       </div>
+      <div class="audible-cover podcast-cover-art">
+        <span>${escapeHtml(state.title || room.title)}</span>
+      </div>
       <article class="live-page-reader" aria-label="Current audiobook page">
         <header>
           <span id="livePageNumber">Page ${livePage.page} / ${livePage.totalPages}</span>
@@ -2355,9 +2386,6 @@ function renderRoomStage() {
       </article>
       <input id="liveAudioProgress" type="range" min="0" max="${duration}" value="${Math.round(liveAudioProgressSeconds)}" aria-label="Live audiobook progress">
       <span class="audible-remaining">${formatSongTime(remaining)} remaining</span>
-      <div class="audible-cover">
-        <span>${escapeHtml(room.title.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase())}</span>
-      </div>
       <div class="audible-controls">
         <button class="icon-button" id="livePrevTrackButton" type="button" aria-label="Previous chapter" title="Previous chapter">
           <svg class="ico"><use href="#icon-chevron-left"></use></svg>
@@ -2377,6 +2405,10 @@ function renderRoomStage() {
         <button type="button" id="liveShareSectionButton">Share<span>Section</span></button>
         <button type="button" id="liveShareBookButton">Share<span>Book</span></button>
       </div>
+      <label class="live-volume-control">
+        <span>Volume</span>
+        <input id="liveVolumeRange" type="range" min="0" max="1" step="0.05" value="${liveVolume}" aria-label="Live volume">
+      </label>
       <div class="live-chapter-menu" id="liveChapterMenu" hidden></div>
       <div class="live-share-menu" id="liveShareMenu" hidden></div>
     </div>
@@ -2396,6 +2428,7 @@ function renderRoomStage() {
     els.roomStagePlayer.querySelector("#liveChaptersButton").addEventListener("click", toggleLiveChapterList);
     els.roomStagePlayer.querySelector("#liveShareSectionButton").addEventListener("click", () => shareLiveAudio("section"));
     els.roomStagePlayer.querySelector("#liveShareBookButton").addEventListener("click", () => shareLiveAudio("book"));
+    els.roomStagePlayer.querySelector("#liveVolumeRange").addEventListener("input", (event) => setLiveVolume(Number(event.target.value)));
   }
   renderLiveChat(chat);
 }
@@ -2868,6 +2901,11 @@ function cycleLivePlaybackSpeed() {
     renderRoomStage();
   }
   setStatus(`Playback speed ${livePlaybackRate.toFixed(2)}x`);
+}
+
+function setLiveVolume(value) {
+  liveVolume = clamp(Number(value), 0, 1);
+  setStatus(`Live volume ${Math.round(liveVolume * 100)}%`);
 }
 
 function toggleLiveChapterList() {
@@ -3763,6 +3801,7 @@ function speakNext() {
   applyCastVoice(utterance, cast);
   if (liveAudioPlaying) {
     utterance.rate = clamp((utterance.rate || 1) * livePlaybackRate, 0.5, 2);
+    utterance.volume = liveVolume;
   }
   utterance.onend = () => {
     activeQueueIndex += 1;

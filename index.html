@@ -6,7 +6,7 @@
     <title>ChapterForge Audiobook Studio</title>
     <link rel="icon" type="image/png" href="assets/studio-cover.png">
     <link rel="apple-touch-icon" href="assets/studio-cover.png">
-    <link rel="stylesheet" href="styles.css?v=live-share-publish-dots-20260707">
+    <link rel="stylesheet" href="styles.css?v=podcast-live-volume-20260709">
   </head>
   <body>
     <svg aria-hidden="true" class="icon-sprite">
@@ -225,37 +225,6 @@
                   <h3>Manuscript</h3>
                 </div>
 
-                <dl class="stat-strip editor-stat-strip creation-metrics">
-                  <div>
-                    <dt>Manuscript Words</dt>
-                    <dd id="wordCount">0</dd>
-                  </div>
-                  <div>
-                    <dt>Pages</dt>
-                    <dd id="pageCountDisplay">0</dd>
-                  </div>
-                  <div>
-                    <dt>Est. Runtime</dt>
-                    <dd id="runtimeEstimate">0m</dd>
-                  </div>
-                  <div>
-                    <dt>Target Words</dt>
-                    <dd id="targetWordCountDisplay">0</dd>
-                  </div>
-                  <div>
-                    <dt>Script Runtime</dt>
-                    <dd id="scriptRuntimeEstimate">0m</dd>
-                  </div>
-                  <div>
-                    <dt>Chapters</dt>
-                    <dd id="chapterCount">0</dd>
-                  </div>
-                  <div>
-                    <dt>Cast</dt>
-                    <dd id="castCount">0</dd>
-                  </div>
-                </dl>
-
                 <div class="editor-field-grid">
                   <label>
                     <span>Title</span>
@@ -359,17 +328,6 @@
                   <button type="button">dramatic</button>
                   <button type="button">full cast</button>
                   <button type="button">cinematic</button>
-                </div>
-
-                <div class="editor-range-grid">
-                  <label>
-                    <span>Weirdness <b id="weirdnessValue">10%</b></span>
-                    <input id="weirdnessRange" type="range" min="0" max="100" value="10">
-                  </label>
-                  <label>
-                    <span>Style Influence <b id="styleInfluenceValue">80%</b></span>
-                    <input id="styleInfluenceRange" type="range" min="0" max="100" value="80">
-                  </label>
                 </div>
 
                 <textarea id="manuscriptInput" spellcheck="true"></textarea>
@@ -588,15 +546,10 @@
                 <input id="searchInput" placeholder="Search SAGA Stories" autocomplete="off">
               </label>
               <div class="search-filter-row">
-                <select id="searchSortSelect" aria-label="Sort search">
-                  <option value="recommended">Recommended</option>
-                  <option value="az">A to Z</option>
-                  <option value="za">Z to A</option>
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="popular">Most Popular</option>
-                  <option value="leastPopular">Least Popular</option>
-                </select>
+                <button type="button" data-search-sort="recommended">Recommended</button>
+                <button type="button" data-search-sort="popular">Popular</button>
+                <button type="button" data-search-sort="alphabetical">Alphabetical</button>
+                <button type="button" data-search-sort="age">Age</button>
               </div>
               <div class="search-results" id="searchResults"></div>
             </section>
@@ -973,6 +926,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=live-share-publish-dots-20260707"></script>
+    <script src="app.js?v=podcast-live-volume-20260709"></script>
   </body>
 </html>
