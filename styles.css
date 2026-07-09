@@ -537,7 +537,7 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
 
 .audible-heading { display: grid; justify-items: center; gap: 0.35rem; text-align: center; }
 
-.audible-heading span, .audible-remaining { color: rgb(170, 170, 170); font-weight: 760; }
+.audible-heading span { color: rgb(170, 170, 170); font-weight: 760; }
 
 .audible-heading strong { font-size: 1.25rem; }
 
@@ -1706,13 +1706,21 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
 }
 
 .audible-time-readout {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   justify-self: center;
-  margin-top: -0.15rem;
-  color: rgba(248, 251, 255, 0.84);
-  font-size: 0.84rem;
-  font-weight: 900;
+  min-width: min(18rem, 82vw);
+  margin-top: -0.1rem;
+  padding: 0.42rem 0.9rem;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(8, 9, 10, 0.54);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 0.8rem 1.6rem rgba(0,0,0,0.2);
+  font-size: clamp(1.2rem, 2.2vw, 1.85rem);
+  font-weight: 950;
   letter-spacing: 0;
+  text-shadow: 0 0.12rem 0.35rem rgba(0,0,0,0.55);
 }
 
 .live-speed-control,

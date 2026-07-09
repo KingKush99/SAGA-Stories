@@ -2434,8 +2434,9 @@ function renderRoomStage() {
     els.roomStagePlayer.querySelector("#livePrevTrackButton").addEventListener("click", () => moveActiveTrack(-1));
     els.roomStagePlayer.querySelector("#liveNextTrackButton").addEventListener("click", () => moveActiveTrack(1));
     const liveProgress = els.roomStagePlayer.querySelector("#liveAudioProgress");
-    liveProgress.addEventListener("input", (event) => setLiveAudiobookProgress(Number(event.target.value), true));
+    liveProgress.addEventListener("input", (event) => setLiveAudiobookProgress(Number(event.target.value), false));
     liveProgress.addEventListener("change", (event) => setLiveAudiobookProgress(Number(event.target.value), true, true));
+    liveProgress.addEventListener("pointerup", (event) => setLiveAudiobookProgress(Number(event.target.value), true, true));
     els.roomStagePlayer.querySelector("#liveSpeedRange").addEventListener("input", (event) => setLivePlaybackRate(Number(event.target.value)));
     els.roomStagePlayer.querySelector("#liveChaptersButton").addEventListener("click", toggleLiveChapterList);
     els.roomStagePlayer.querySelector("#liveShareSectionButton").addEventListener("click", () => shareLiveAudio("section"));
@@ -2808,14 +2809,14 @@ function startLiveAudiobookPlayback() {
   if (activeQueue.length) {
     window.speechSynthesis.resume();
   } else {
-    const lines = liveAudiobookLines();
+    const lines = liveAudiobookLinesFromProgress();
     if (!lines.length) {
       setStatus("No audiobook lines to play");
       return;
     }
     state.activeChapterIndex = Math.min(state.activeTrackIndex, Math.max(0, parsedBook.chapters.length - 1));
     liveAudioPlaying = true;
-    speakBrowserQueue(lines.slice(liveLineIndexForProgress(lines)));
+    speakBrowserQueue(lines);
   }
   liveAudioPlaying = true;
   startLiveAudioTimer();
@@ -2878,6 +2879,8 @@ function setLiveAudiobookProgress(value, restartPlayback = false, immediate = fa
   updateLiveAudioProgressUi();
   if (restartPlayback && liveAudioPlaying) {
     restartLivePlaybackFromProgress(immediate ? 0 : 180);
+  } else if (!liveAudioPlaying) {
+    stopSpeech(false);
   }
 }
 
@@ -3092,18 +3095,30 @@ function livePageHtml(livePage) {
   }).join(" ");
 }
 
-function liveLineIndexForProgress(lines = liveAudiobookLines()) {
-  if (!lines.length) return 0;
+function liveAudiobookLinesFromProgress() {
+  const lines = liveAudiobookLines();
+  if (!lines.length) return [];
   const duration = liveTrackDurationSeconds();
   const targetRatio = clamp(liveAudioProgressSeconds / Math.max(1, duration), 0, 1);
   const totalWords = Math.max(1, lines.reduce((sum, line) => sum + countWords(line.text || ""), 0));
-  const targetWord = Math.floor(totalWords * targetRatio);
+  const targetWord = clamp(Math.floor(totalWords * targetRatio), 0, Math.max(0, totalWords - 1));
   let runningWords = 0;
   for (let index = 0; index < lines.length; index += 1) {
-    runningWords += Math.max(1, countWords(lines[index].text || ""));
-    if (runningWords >= targetWord) return index;
+    const line = lines[index];
+    const lineWords = wordsFromText(line.text || "");
+    const nextWordTotal = runningWords + Math.max(1, lineWords.length);
+    if (nextWordTotal > targetWord || index === lines.length - 1) {
+      const offset = clamp(targetWord - runningWords, 0, Math.max(0, lineWords.length - 1));
+      const firstLineText = lineWords.slice(offset).join(" ").trim();
+      const firstLine = {
+        ...line,
+        text: firstLineText || line.text
+      };
+      return [firstLine, ...lines.slice(index + 1)];
+    }
+    runningWords = nextWordTotal;
   }
-  return Math.max(0, lines.length - 1);
+  return lines.slice(-1);
 }
 
 function liveTrackDurationSeconds() {
@@ -3116,6 +3131,14 @@ function liveAudiobookLines() {
   const chapter = activeChapter();
   if (chapter.lines.length) return chapter.lines;
   return [{ speakerId: "narrator", speakerName: "Narrator", text: state.manuscript || state.summary || state.title }];
+}
+
+function wordsFromText(text) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
 }
 
 async function speakHdLanguageOutput(text, cast) {
