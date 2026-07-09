@@ -368,6 +368,7 @@ let liveAudioPlaying = false;
 let liveAudioProgressSeconds = 0;
 let livePlaybackRate = 1;
 let liveVolume = 1;
+let liveSeekRestartTimer = null;
 let openedBookComments = null;
 let searchSortMode = 'recommended';
 const searchSortDirections = { popular: -1, alphabetical: 1, age: -1 };
@@ -2365,7 +2366,6 @@ function renderRoomStage() {
   els.roomStagePlayer.style.setProperty("--accent", room.accent);
   els.roomStagePlayer.style.setProperty("--room-bg", room.gradient);
   const duration = liveTrackDurationSeconds();
-  const remaining = Math.max(0, duration - liveAudioProgressSeconds);
   const livePage = currentLivePage();
   els.roomStagePlayer.innerHTML = isEntered ? `
     <div class="audible-player">
@@ -2389,10 +2389,10 @@ function renderRoomStage() {
           <span id="livePageNumber">Page ${livePage.page} / ${livePage.totalPages}</span>
           <span id="livePageWords">${formatNumber(livePage.words)} words</span>
         </header>
-        <p id="livePageText">${escapeHtml(livePage.text)}</p>
+        <p id="livePageText">${livePageHtml(livePage)}</p>
       </article>
       <input id="liveAudioProgress" type="range" min="0" max="${duration}" value="${Math.round(liveAudioProgressSeconds)}" aria-label="Live audiobook progress">
-      <span class="audible-remaining">${formatSongTime(remaining)} remaining</span>
+      <span class="audible-time-readout" id="liveTimeReadout">${formatSongTime(liveAudioProgressSeconds)} / ${formatSongTime(duration)}</span>
       <div class="audible-controls">
         <button class="icon-button" id="livePrevTrackButton" type="button" aria-label="Previous chapter" title="Previous chapter">
           <svg class="ico"><use href="#icon-chevron-left"></use></svg>
@@ -2433,7 +2433,9 @@ function renderRoomStage() {
     els.roomStagePlayer.querySelector("#liveForwardButton").addEventListener("click", () => seekLiveAudiobook(30));
     els.roomStagePlayer.querySelector("#livePrevTrackButton").addEventListener("click", () => moveActiveTrack(-1));
     els.roomStagePlayer.querySelector("#liveNextTrackButton").addEventListener("click", () => moveActiveTrack(1));
-    els.roomStagePlayer.querySelector("#liveAudioProgress").addEventListener("input", (event) => setLiveAudiobookProgress(Number(event.target.value)));
+    const liveProgress = els.roomStagePlayer.querySelector("#liveAudioProgress");
+    liveProgress.addEventListener("input", (event) => setLiveAudiobookProgress(Number(event.target.value), true));
+    liveProgress.addEventListener("change", (event) => setLiveAudiobookProgress(Number(event.target.value), true, true));
     els.roomStagePlayer.querySelector("#liveSpeedRange").addEventListener("input", (event) => setLivePlaybackRate(Number(event.target.value)));
     els.roomStagePlayer.querySelector("#liveChaptersButton").addEventListener("click", toggleLiveChapterList);
     els.roomStagePlayer.querySelector("#liveShareSectionButton").addEventListener("click", () => shareLiveAudio("section"));
@@ -2813,7 +2815,7 @@ function startLiveAudiobookPlayback() {
     }
     state.activeChapterIndex = Math.min(state.activeTrackIndex, Math.max(0, parsedBook.chapters.length - 1));
     liveAudioPlaying = true;
-    speakBrowserQueue(lines);
+    speakBrowserQueue(lines.slice(liveLineIndexForProgress(lines)));
   }
   liveAudioPlaying = true;
   startLiveAudioTimer();
@@ -2834,6 +2836,8 @@ function pauseLiveAudiobookPlayback() {
 function stopLiveAudiobookPlayback(resetProgress = false) {
   liveAudioPlaying = false;
   stopLiveAudioTimer();
+  window.clearTimeout(liveSeekRestartTimer);
+  liveSeekRestartTimer = null;
   activeQueue = [];
   activeQueueIndex = 0;
   if (resetProgress) {
@@ -2865,26 +2869,38 @@ function stopLiveAudioTimer() {
 }
 
 function seekLiveAudiobook(delta) {
-  setLiveAudiobookProgress(liveAudioProgressSeconds + delta);
+  setLiveAudiobookProgress(liveAudioProgressSeconds + delta, true, true);
   setStatus(delta < 0 ? "Rewound 30 seconds" : "Skipped ahead 30 seconds");
 }
 
-function setLiveAudiobookProgress(value) {
+function setLiveAudiobookProgress(value, restartPlayback = false, immediate = false) {
   liveAudioProgressSeconds = clamp(Number(value) || 0, 0, liveTrackDurationSeconds());
   updateLiveAudioProgressUi();
+  if (restartPlayback && liveAudioPlaying) {
+    restartLivePlaybackFromProgress(immediate ? 0 : 180);
+  }
+}
+
+function restartLivePlaybackFromProgress(delay = 0) {
+  window.clearTimeout(liveSeekRestartTimer);
+  liveSeekRestartTimer = window.setTimeout(() => {
+    if (!liveAudioPlaying) return;
+    stopLiveAudiobookPlayback(false);
+    liveAudioPlaying = true;
+    startLiveAudiobookPlayback();
+  }, delay);
 }
 
 function updateLiveAudioProgressUi() {
   const duration = liveTrackDurationSeconds();
-  const remaining = Math.max(0, duration - liveAudioProgressSeconds);
   const progress = document.getElementById("liveAudioProgress");
   if (progress) {
     progress.max = String(duration);
     progress.value = String(Math.round(liveAudioProgressSeconds));
   }
-  const remainingLabel = els.roomStagePlayer.querySelector(".audible-remaining");
-  if (remainingLabel) {
-    remainingLabel.textContent = `${formatSongTime(remaining)} remaining`;
+  const timeReadout = document.getElementById("liveTimeReadout");
+  if (timeReadout) {
+    timeReadout.textContent = `${formatSongTime(liveAudioProgressSeconds)} / ${formatSongTime(duration)}`;
   }
   const livePage = currentLivePage();
   const pageNumber = document.getElementById("livePageNumber");
@@ -2892,7 +2908,7 @@ function updateLiveAudioProgressUi() {
   const pageText = document.getElementById("livePageText");
   if (pageNumber) pageNumber.textContent = `Page ${livePage.page} / ${livePage.totalPages}`;
   if (pageWords) pageWords.textContent = `${formatNumber(livePage.words)} words`;
-  if (pageText) pageText.textContent = livePage.text;
+  if (pageText) pageText.innerHTML = livePageHtml(livePage);
   const playButton = document.getElementById("livePlayPauseButton");
   if (playButton) {
     playButton.setAttribute("aria-label", liveAudioPlaying ? "Pause audiobook" : "Play audiobook");
@@ -3051,14 +3067,43 @@ function currentLivePage() {
   const pageSize = wordsPerPage;
   const totalPages = Math.max(1, Math.ceil(words.length / pageSize));
   const duration = liveTrackDurationSeconds();
-  const pageIndex = clamp(Math.floor((liveAudioProgressSeconds / Math.max(1, duration)) * totalPages), 0, totalPages - 1);
+  const globalWordIndex = clamp(Math.floor((liveAudioProgressSeconds / Math.max(1, duration)) * words.length), 0, Math.max(0, words.length - 1));
+  const pageIndex = clamp(Math.floor(globalWordIndex / pageSize), 0, totalPages - 1);
+  const pageStart = pageIndex * pageSize;
   const pageWords = words.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   return {
     page: pageIndex + 1,
     totalPages,
     words: pageWords.length,
-    text: pageWords.join(" ") || activeLiveTrack().excerpt || selectedLiveRoom().description
+    text: pageWords.join(" ") || activeLiveTrack().excerpt || selectedLiveRoom().description,
+    pageWords,
+    activeWordIndex: clamp(globalWordIndex - pageStart, 0, Math.max(0, pageWords.length - 1))
   };
+}
+
+function livePageHtml(livePage) {
+  const pageWords = livePage.pageWords?.length
+    ? livePage.pageWords
+    : String(livePage.text || "").split(/\s+/).filter(Boolean);
+  if (!pageWords.length) return escapeHtml(livePage.text || "");
+  return pageWords.map((word, index) => {
+    const className = index === livePage.activeWordIndex ? " class=\"live-current-word\"" : "";
+    return `<span${className}>${escapeHtml(word)}</span>`;
+  }).join(" ");
+}
+
+function liveLineIndexForProgress(lines = liveAudiobookLines()) {
+  if (!lines.length) return 0;
+  const duration = liveTrackDurationSeconds();
+  const targetRatio = clamp(liveAudioProgressSeconds / Math.max(1, duration), 0, 1);
+  const totalWords = Math.max(1, lines.reduce((sum, line) => sum + countWords(line.text || ""), 0));
+  const targetWord = Math.floor(totalWords * targetRatio);
+  let runningWords = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    runningWords += Math.max(1, countWords(lines[index].text || ""));
+    if (runningWords >= targetWord) return index;
+  }
+  return Math.max(0, lines.length - 1);
 }
 
 function liveTrackDurationSeconds() {
@@ -3069,7 +3114,7 @@ function liveTrackDurationSeconds() {
 
 function liveAudiobookLines() {
   const chapter = activeChapter();
-  if (chapter.lines.length) return chapter.lines.slice(0, 12);
+  if (chapter.lines.length) return chapter.lines;
   return [{ speakerId: "narrator", speakerName: "Narrator", text: state.manuscript || state.summary || state.title }];
 }
 
