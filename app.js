@@ -4379,23 +4379,23 @@ function estimateMinutes(words) {
 
 function hydratePlanInputs() {
   readPlanInputs(true);
-  els.planChaptersInput.value = String(state.targetChapters);
-  els.planPagesInput.value = String(state.targetPages);
-  if (els.targetWordsInput) els.targetWordsInput.value = String(targetWordCount());
+  setInputValue(els.planChaptersInput, String(state.targetChapters));
+  setInputValue(els.planPagesInput, String(state.targetPages));
+  setInputValue(els.targetWordsInput, String(targetWordCount()));
 }
 
 function readPlanInputs(normalize = true) {
-  const chapters = clamp(Number.parseInt(els.planChaptersInput.value, 10) || state.targetChapters || defaultState.targetChapters, 1, 80);
+  const chapters = clamp(Number.parseInt(els.planChaptersInput?.value, 10) || state.targetChapters || defaultState.targetChapters, 1, 80);
   const rawWords = Number.parseInt(els.targetWordsInput?.value, 10);
-  const derivedPages = rawWords ? Math.ceil(rawWords / wordsPerPage) : Number.parseInt(els.planPagesInput.value, 10);
+  const derivedPages = rawWords ? Math.ceil(rawWords / wordsPerPage) : Number.parseInt(els.planPagesInput?.value, 10);
   const pages = clamp(derivedPages || state.targetPages || defaultState.targetPages, minPlannedPages, maxPlannedPages);
   state.targetChapters = Math.round(chapters);
   state.targetPages = Math.round(pages);
   updateRuntimeFromPlan();
   if (normalize) {
-    els.planChaptersInput.value = String(state.targetChapters);
-    els.planPagesInput.value = String(state.targetPages);
-    if (els.targetWordsInput) els.targetWordsInput.value = String(targetWordCount());
+    setInputValue(els.planChaptersInput, String(state.targetChapters));
+    setInputValue(els.planPagesInput, String(state.targetPages));
+    setInputValue(els.targetWordsInput, String(targetWordCount()));
   }
 }
 
