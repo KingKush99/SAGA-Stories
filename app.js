@@ -2296,7 +2296,7 @@ function renderLiveRooms() {
 function enterCatalogRoom(item) {
   const roomId = liveRooms[Math.abs(item.id.length + item.title.length) % liveRooms.length].id;
   const targetWords = Math.max(40000, Number(item.words) || Math.round((item.minutes || 260) * narrationWordsPerMinute));
-  const chapterCount = clamp(Math.round(targetWords / 4500), 8, 18);
+  const chapterCount = clamp(Math.round(targetWords / 9000), 4, 8);
   state.title = item.title;
   state.genre = item.genre;
   state.targetPages = clamp(Math.ceil(targetWords / wordsPerPage), minPlannedPages, maxPlannedPages);
@@ -2343,9 +2343,12 @@ function renderLiveRoomCard(item) {
 
 function renderRoomStage() {
   const room = selectedLiveRoom();
+  const isEntered = state.enteredRoomId === room.id;
+  if (isEntered) {
+    ensureLiveManuscript(room);
+  }
   const track = activeLiveTrack();
   const chat = liveChatForRoom(room.id);
-  const isEntered = state.enteredRoomId === room.id;
   els.roomStageTitle.textContent = room.title;
   els.roomStageMeta.textContent = `${isEntered ? "Inside" : room.status} - ${room.listeners} listening`;
   els.roomPresence.textContent = isEntered
@@ -2400,11 +2403,14 @@ function renderRoomStage() {
         </button>
       </div>
       <div class="audible-bottom-row">
-        <button type="button" id="liveSpeedButton">${livePlaybackRate.toFixed(2)}X<span>Speed</span></button>
         <button type="button" id="liveChaptersButton">Chapters<span>List</span></button>
         <button type="button" id="liveShareSectionButton">Share<span>Section</span></button>
         <button type="button" id="liveShareBookButton">Share<span>Book</span></button>
       </div>
+      <label class="live-speed-control">
+        <span>Speed <b id="liveSpeedValue">${livePlaybackRate.toFixed(2)}x</b></span>
+        <input id="liveSpeedRange" type="range" min="0.5" max="2" step="0.05" value="${livePlaybackRate}" aria-label="Live playback speed">
+      </label>
       <label class="live-volume-control">
         <span>Volume</span>
         <input id="liveVolumeRange" type="range" min="0" max="1" step="0.05" value="${liveVolume}" aria-label="Live volume">
@@ -2424,7 +2430,7 @@ function renderRoomStage() {
     els.roomStagePlayer.querySelector("#livePrevTrackButton").addEventListener("click", () => moveActiveTrack(-1));
     els.roomStagePlayer.querySelector("#liveNextTrackButton").addEventListener("click", () => moveActiveTrack(1));
     els.roomStagePlayer.querySelector("#liveAudioProgress").addEventListener("input", (event) => setLiveAudiobookProgress(Number(event.target.value)));
-    els.roomStagePlayer.querySelector("#liveSpeedButton").addEventListener("click", cycleLivePlaybackSpeed);
+    els.roomStagePlayer.querySelector("#liveSpeedRange").addEventListener("input", (event) => setLivePlaybackRate(Number(event.target.value)));
     els.roomStagePlayer.querySelector("#liveChaptersButton").addEventListener("click", toggleLiveChapterList);
     els.roomStagePlayer.querySelector("#liveShareSectionButton").addEventListener("click", () => shareLiveAudio("section"));
     els.roomStagePlayer.querySelector("#liveShareBookButton").addEventListener("click", () => shareLiveAudio("book"));
@@ -2888,6 +2894,8 @@ function updateLiveAudioProgressUi() {
     playButton.setAttribute("aria-label", liveAudioPlaying ? "Pause audiobook" : "Play audiobook");
     playButton.innerHTML = `<svg class="ico"><use href="#${liveAudioPlaying ? "icon-pause" : "icon-play"}"></use></svg>`;
   }
+  const speedValue = document.getElementById("liveSpeedValue");
+  if (speedValue) speedValue.textContent = `${livePlaybackRate.toFixed(2)}x`;
 }
 
 function cycleLivePlaybackSpeed() {
@@ -2903,9 +2911,36 @@ function cycleLivePlaybackSpeed() {
   setStatus(`Playback speed ${livePlaybackRate.toFixed(2)}x`);
 }
 
+function setLivePlaybackRate(value) {
+  livePlaybackRate = clamp(Number(value) || 1, 0.5, 2);
+  const speedValue = document.getElementById("liveSpeedValue");
+  if (speedValue) speedValue.textContent = `${livePlaybackRate.toFixed(2)}x`;
+  if (liveAudioPlaying) {
+    stopLiveAudiobookPlayback(false);
+    window.setTimeout(startLiveAudiobookPlayback, 0);
+  }
+  setStatus(`Playback speed ${livePlaybackRate.toFixed(2)}x`);
+}
+
 function setLiveVolume(value) {
   liveVolume = clamp(Number(value), 0, 1);
   setStatus(`Live volume ${Math.round(liveVolume * 100)}%`);
+}
+
+function ensureLiveManuscript(room = selectedLiveRoom()) {
+  const totalWords = countWords(state.manuscript || "");
+  const tracks = parsedBook?.chapters?.length ? tracksFromChapters(parsedBook.chapters) : [];
+  const weakestChapterWords = tracks.length ? Math.min(...tracks.map((track) => track.words || 0)) : 0;
+  if (totalWords >= 40000 && weakestChapterWords >= 3000) return;
+  const targetWords = Math.max(45000, Number(state.targetPages || 0) * wordsPerPage || 45000);
+  const chapterCount = clamp(Math.round(targetWords / 9000), 4, 8);
+  state.targetPages = clamp(Math.ceil(targetWords / wordsPerPage), minPlannedPages, maxPlannedPages);
+  state.targetChapters = chapterCount;
+  state.targetDurationSeconds = clampDuration(Math.ceil((targetWords / narrationWordsPerMinute) * 60));
+  state.manuscript = buildTimedBookDraft(targetWords, chapterCount, [state.genre || room.title, room.title, "Full live audiobook"]);
+  parsedBook = parseManuscript(state.manuscript);
+  state.activeTrackIndex = clamp(state.activeTrackIndex || 0, 0, Math.max(0, parsedBook.chapters.length - 1));
+  state.activeChapterIndex = state.activeTrackIndex;
 }
 
 function toggleLiveChapterList() {
@@ -4239,6 +4274,7 @@ function selectedLiveRoom() {
 function enterLiveRoom(roomId) {
   stopLiveAudiobookPlayback(true);
   state.activeRoomId = liveRooms.some((room) => room.id === roomId) ? roomId : liveRooms[0].id;
+  ensureLiveManuscript(selectedLiveRoom());
   state.enteredRoomId = state.activeRoomId;
   const chat = liveChatForRoom(state.activeRoomId);
   chat.push({
