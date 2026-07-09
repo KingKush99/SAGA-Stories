@@ -722,33 +722,37 @@ function bindOptionalClick(id, handler) {
   }
 }
 
+function setInputValue(input, value) {
+  if (input) input.value = value;
+}
+
 function hydrateInputs() {
-  els.bookTitle.value = state.title;
-  els.authorName.value = state.author;
-  els.genreSelect.value = state.genre;
-  els.manuscriptInput.value = state.manuscript;
-  if (els.ideaPromptInput) els.ideaPromptInput.value = state.ideaPrompt || "";
-  if (els.excludedStylesInput) els.excludedStylesInput.value = state.excludedStyles || "";
-  if (els.generationCountInput) els.generationCountInput.value = String(state.generationCount || 2);
+  setInputValue(els.bookTitle, state.title);
+  setInputValue(els.authorName, state.author);
+  setInputValue(els.genreSelect, state.genre);
+  setInputValue(els.manuscriptInput, state.manuscript);
+  setInputValue(els.ideaPromptInput, state.ideaPrompt || "");
+  setInputValue(els.excludedStylesInput, state.excludedStyles || "");
+  setInputValue(els.generationCountInput, String(state.generationCount || 2));
   hydratePlanInputs();
-  els.targetLanguageInput.value = state.targetLanguage;
-  els.songStyleInput.value = state.songStyle;
-  els.planSectionsInput.value = state.planSections;
-  els.languageModeSelect.value = normalizeLanguageMode(state.languageMode);
-  els.languageOutput.value = state.languageOutput;
-  if (els.weirdnessRange) els.weirdnessRange.value = String(state.weirdness);
-  if (els.styleInfluenceRange) els.styleInfluenceRange.value = String(state.styleInfluence);
+  setInputValue(els.targetLanguageInput, state.targetLanguage);
+  setInputValue(els.songStyleInput, state.songStyle);
+  setInputValue(els.planSectionsInput, state.planSections);
+  setInputValue(els.languageModeSelect, normalizeLanguageMode(state.languageMode));
+  setInputValue(els.languageOutput, state.languageOutput);
+  setInputValue(els.weirdnessRange, String(state.weirdness));
+  setInputValue(els.styleInfluenceRange, String(state.styleInfluence));
   updateSongSliderLabels();
-  els.voiceModeSelect.value = state.voiceMode;
-  els.ttsApiKey.value = sessionStorage.getItem("chapterforge-openai-key") || "";
-  els.audioQualitySelect.value = state.audioQuality;
-  els.masteringSelect.value = state.mastering;
-  els.narratorCredit.value = state.narratorCredit;
-  els.releaseDate.value = state.releaseDate;
-  els.formatSelect.value = state.format;
-  els.priceInput.value = "Free";
-  els.summaryInput.value = state.summary;
-  Array.from(els.channelList.querySelectorAll("input")).forEach((input) => {
+  setInputValue(els.voiceModeSelect, state.voiceMode);
+  setInputValue(els.ttsApiKey, sessionStorage.getItem("chapterforge-openai-key") || "");
+  setInputValue(els.audioQualitySelect, state.audioQuality);
+  setInputValue(els.masteringSelect, state.mastering);
+  setInputValue(els.narratorCredit, state.narratorCredit);
+  setInputValue(els.releaseDate, state.releaseDate);
+  setInputValue(els.formatSelect, state.format);
+  setInputValue(els.priceInput, "Free");
+  setInputValue(els.summaryInput, state.summary);
+  Array.from(els.channelList?.querySelectorAll("input") || []).forEach((input) => {
     input.checked = state.channels.includes(input.value);
   });
 }
