@@ -2353,9 +2353,12 @@ function renderRoomStage() {
     ensureLiveManuscript(room);
   }
   const track = activeLiveTrack();
+  const actualBookWords = actualLiveBookWordCount();
   const chat = liveChatForRoom(room.id);
   els.roomStageTitle.textContent = room.title;
-  els.roomStageMeta.textContent = `${isEntered ? "Inside" : room.status} - ${room.listeners} listening`;
+  els.roomStageMeta.textContent = isEntered
+    ? `Inside - ${formatNumber(actualBookWords)} actual words - ${room.listeners} listening`
+    : `${room.status} - ${room.listeners} listening`;
   els.roomPresence.textContent = isEntered
     ? `${room.title} is playing live.`
     : `Enter ${room.title} to listen and comment.`;
@@ -2378,7 +2381,7 @@ function renderRoomStage() {
         </button>
       </div>
       <div class="audible-heading">
-        <span>Chapter ${track.index}</span>
+        <span>Chapter ${track.index} - ${formatNumber(track.words)} chapter words - ${formatNumber(actualBookWords)} book words</span>
         <strong>${escapeHtml(track.title)}</strong>
       </div>
       <div class="audible-cover podcast-cover-art">
@@ -2387,7 +2390,7 @@ function renderRoomStage() {
       <article class="live-page-reader" aria-label="Current audiobook page">
         <header>
           <span id="livePageNumber">Page ${livePage.page} / ${livePage.totalPages}</span>
-          <span id="livePageWords">${formatNumber(livePage.words)} words</span>
+          <span id="livePageWords">${formatNumber(livePage.words)} words on this page</span>
         </header>
         <div id="livePageText" class="live-page-text">${livePageHtml(livePage)}</div>
       </article>
@@ -2910,7 +2913,7 @@ function updateLiveAudioProgressUi() {
   const pageWords = document.getElementById("livePageWords");
   const pageText = document.getElementById("livePageText");
   if (pageNumber) pageNumber.textContent = `Page ${livePage.page} / ${livePage.totalPages}`;
-  if (pageWords) pageWords.textContent = `${formatNumber(livePage.words)} words`;
+  if (pageWords) pageWords.textContent = `${formatNumber(livePage.words)} words on this page`;
   if (pageText) pageText.innerHTML = livePageHtml(livePage);
   const playButton = document.getElementById("livePlayPauseButton");
   if (playButton) {
@@ -2954,16 +2957,24 @@ function ensureLiveManuscript(room = selectedLiveRoom()) {
   const totalWords = countWords(state.manuscript || "");
   const tracks = parsedBook?.chapters?.length ? tracksFromChapters(parsedBook.chapters) : [];
   const weakestChapterWords = tracks.length ? Math.min(...tracks.map((track) => track.words || 0)) : 0;
-  if (totalWords >= 40000 && weakestChapterWords >= 3000) return;
+  const expectedChapterFloor = Math.max(7500, Math.floor((totalWords / Math.max(1, tracks.length || 1)) * 0.72));
+  if (totalWords >= 40000 && tracks.length >= 4 && weakestChapterWords >= expectedChapterFloor) return;
   const targetWords = Math.max(45000, Number(state.targetPages || 0) * wordsPerPage || 45000);
-  const chapterCount = clamp(Math.round(targetWords / 9000), 4, 8);
+  const chapterCount = clamp(Math.ceil(targetWords / 9000), 4, 8);
   state.targetPages = clamp(Math.ceil(targetWords / wordsPerPage), minPlannedPages, maxPlannedPages);
   state.targetChapters = chapterCount;
   state.targetDurationSeconds = clampDuration(Math.ceil((targetWords / narrationWordsPerMinute) * 60));
-  state.manuscript = buildTimedBookDraft(targetWords, chapterCount, [state.genre || room.title, room.title, "Full live audiobook"]);
+  const liveSections = [state.genre || room.title, room.title, "Full live audiobook"];
+  state.manuscript = ensureGeneratedLength(
+    buildTimedBookDraft(targetWords, chapterCount, liveSections),
+    targetWords,
+    chapterCount,
+    liveSections
+  );
   parsedBook = parseManuscript(state.manuscript);
   state.activeTrackIndex = clamp(state.activeTrackIndex || 0, 0, Math.max(0, parsedBook.chapters.length - 1));
   state.activeChapterIndex = state.activeTrackIndex;
+  persistState();
 }
 
 function toggleLiveChapterList() {
@@ -3082,6 +3093,12 @@ function currentLivePage() {
     pageWords,
     activeWordIndex: clamp(globalWordIndex - pageStart, 0, Math.max(0, pageWords.length - 1))
   };
+}
+
+function actualLiveBookWordCount() {
+  return parsedBook?.chapters?.length
+    ? parsedBook.chapters.reduce((sum, chapter) => sum + countWords(chapter.lines.map((line) => line.text).join(" ")), 0)
+    : countWords(state.manuscript || "");
 }
 
 function livePageHtml(livePage) {
