@@ -6,7 +6,7 @@
     <title>ChapterForge Audiobook Studio</title>
     <link rel="icon" type="image/png" href="assets/studio-cover.png">
     <link rel="apple-touch-icon" href="assets/studio-cover.png">
-    <link rel="stylesheet" href="styles.css?v=hd-voice-default-live-20260709">
+    <link rel="stylesheet" href="styles.css?v=elevenlabs-full-live-20260709">
   </head>
   <body>
     <svg aria-hidden="true" class="icon-sprite">
@@ -387,7 +387,8 @@
                   <label>
                     <span>Voice Engine</span>
                     <select id="voiceModeSelect">
-                      <option value="openai">OpenAI HD (recommended)</option>
+                      <option value="elevenlabs">ElevenLabs Premium (recommended)</option>
+                      <option value="openai">OpenAI HD</option>
                       <option value="openvoice">Local Open Voice</option>
                       <option value="studio">Studio Neural</option>
                       <option value="neural">Cloud/Neural Only</option>
@@ -396,7 +397,7 @@
                   </label>
                   <label>
                     <span>HD API Key</span>
-                    <input id="ttsApiKey" type="password" placeholder="Paste OpenAI key for HD playback" autocomplete="off">
+                    <input id="ttsApiKey" type="password" placeholder="Paste ElevenLabs or OpenAI key" autocomplete="off">
                   </label>
                   <label>
                     <span>Audio Quality</span>
@@ -415,7 +416,7 @@
                       <option value="raw">Raw</option>
                     </select>
                   </label>
-                  <div class="voice-inventory is-hd" id="voiceInventory">OpenAI HD is the default. Add a key for premium voices; browser voices are fallback only.</div>
+                  <div class="voice-inventory is-hd" id="voiceInventory">ElevenLabs Premium is the default. Add a key for near-studio voices; browser voices are fallback only.</div>
                 </div>
                 <div class="add-character-row">
                   <label>
@@ -925,6 +926,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=hd-voice-default-live-20260709"></script>
+    <script src="app.js?v=elevenlabs-full-live-20260709"></script>
   </body>
 </html>

@@ -1810,3 +1810,125 @@ input[type="range"] { height: 1.8rem; padding: 0px; accent-color: var(--teal); }
 #liveView.is-room-open .audible-cover.podcast-cover-art span {
   display: block !important;
 }
+/* Full-page live audiobook stage. */
+#liveView.is-room-open .room-stage-panel {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 80;
+  width: 100vw !important;
+  max-width: none !important;
+  min-height: 100dvh;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  background: #041018 !important;
+}
+
+#liveView.is-room-open .room-stage-player {
+  width: 100%;
+  min-height: 100dvh !important;
+  padding: clamp(0.85rem, 1.8vw, 1.4rem) !important;
+  place-items: stretch !important;
+  background:
+    radial-gradient(circle at 15% 12%, rgba(84, 182, 166, 0.34), transparent 28rem),
+    radial-gradient(circle at 78% 22%, rgba(216, 169, 76, 0.16), transparent 25rem),
+    linear-gradient(145deg, #04141d, #06101a 58%, #02070c) !important;
+}
+
+#liveView.is-room-open .audible-player {
+  width: 100% !important;
+  max-width: none !important;
+  height: calc(100dvh - clamp(1.7rem, 3.6vw, 2.8rem)) !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(22rem, 1.08fr) minmax(24rem, 0.92fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-areas:
+    "top top"
+    "heading heading"
+    "cover reader"
+    "progress progress"
+    "time time"
+    "controls controls"
+    "bottom bottom"
+    "speed volume";
+  gap: clamp(0.65rem, 1.2vw, 1rem);
+  padding: clamp(0.85rem, 1.5vw, 1.25rem) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#liveView.is-room-open .audible-player::before { display: none !important; }
+#liveView.is-room-open .audible-top-row { grid-area: top; }
+#liveView.is-room-open .audible-heading { grid-area: heading; }
+#liveView.is-room-open .podcast-cover-art { grid-area: cover; }
+#liveView.is-room-open .live-page-reader { grid-area: reader; }
+#liveView.is-room-open #liveAudioProgress { grid-area: progress; }
+#liveView.is-room-open .audible-time-readout { grid-area: time; }
+#liveView.is-room-open .audible-controls { grid-area: controls; }
+#liveView.is-room-open .audible-bottom-row { grid-area: bottom; }
+#liveView.is-room-open .live-speed-control { grid-area: speed; }
+#liveView.is-room-open .live-volume-control { grid-area: volume; }
+
+#liveView.is-room-open .audible-cover.podcast-cover-art {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  border-radius: 1rem !important;
+  padding: clamp(1.2rem, 3vw, 2rem) !important;
+}
+
+#liveView.is-room-open .audible-cover.podcast-cover-art span {
+  max-width: min(28rem, 72%);
+  font-size: clamp(3rem, 7.2vw, 7.5rem) !important;
+  line-height: 0.88 !important;
+}
+
+#liveView.is-room-open .live-page-reader {
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  padding: clamp(1rem, 1.6vw, 1.35rem) !important;
+  border-radius: 1rem !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+#liveView.is-room-open .live-page-text {
+  font-size: clamp(1rem, 1.25vw, 1.28rem) !important;
+  line-height: 1.62 !important;
+}
+
+#liveView.is-room-open .audible-heading strong {
+  font-size: clamp(1.25rem, 2vw, 2rem) !important;
+}
+
+#liveView.is-room-open .audible-controls {
+  padding-block: 0.1rem;
+}
+
+@media (max-width: 900px) {
+  #liveView.is-room-open .audible-player {
+    height: 100dvh !important;
+    overflow: auto !important;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(18rem, 38dvh) minmax(16rem, 1fr) auto auto auto auto auto;
+    grid-template-areas:
+      "top"
+      "heading"
+      "cover"
+      "reader"
+      "progress"
+      "time"
+      "controls"
+      "bottom"
+      "speed"
+      "volume";
+  }
+}

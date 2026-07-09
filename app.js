@@ -94,8 +94,8 @@ const defaultState = {
   price: "Free",
   summary: "A character-driven fantasy audiobook about a hidden library, a living map, and the voices needed to unlock a lost city.",
   channels: ["Audible", "Apple Books", "Spotify", "Direct Store"],
-  voiceMode: "openai",
-  voiceUpgradeVersion: 4,
+  voiceMode: "elevenlabs",
+  voiceUpgradeVersion: 5,
   audioQuality: "wav",
   mastering: "audiobook",
   targetLanguage: "English",
@@ -170,6 +170,13 @@ const defaultState = {
 
 const accentColors = ["#54b6a6", "#d8a94c", "#b66a43", "#9e6fa6", "#86a8e7", "#e06c75", "#8ec07c"];
 const hdVoices = ["marin", "cedar", "coral", "onyx", "verse", "alloy", "ash", "ballad", "sage", "shimmer", "nova", "echo", "fable"];
+const elevenLabsVoices = {
+  narrator: "21m00Tcm4TlvDq8ikWAM",
+  lead: "EXAVITQu4vr4xnSDxMaL",
+  protector: "ErXwobaYiN019PkySvjV",
+  mysterious: "VR6AewLTigWG4xSOukaG",
+  default: "TxGEqnHWrfWFTfGW9XjX"
+};
 const mascotOptions = [
   ["saint_hound", "Saint Hound", "hound"], ["ember_wolf", "Ember Wolf", "wolf"], ["royal_lion", "Royal Lion", "lion"], ["storm_eagle", "Storm Eagle", "eagle"],
   ["forest_owl", "Forest Owl", "owl"], ["neon_tiger", "Neon Tiger", "tiger"], ["ice_panther", "Ice Panther", "panther"], ["ruby_dragon", "Ruby Dragon", "dragon"],
@@ -1812,6 +1819,14 @@ function renderVoiceInventory() {
   if (state.voiceMode === "openvoice") {
     const customLabel = state.customVoiceName ? ` Custom voice: ${state.customVoiceName}.` : "";
     els.voiceInventory.textContent = `Local Open Voice selected. Connect a local Piper/OpenVoice renderer for neural voices; browser voices are fallback only.${customLabel}`;
+    return;
+  }
+  if (state.voiceMode === "elevenlabs") {
+    const keyReady = Boolean(els.ttsApiKey.value.trim());
+    const customLabel = state.customVoiceName ? ` Custom voice: ${state.customVoiceName}.` : "";
+    els.voiceInventory.textContent = keyReady
+      ? `ElevenLabs Premium ready: multilingual v2, stability tuned, natural audiobook voices.${customLabel}`
+      : `ElevenLabs Premium selected. Paste an ElevenLabs API key here for less robotic voices; browser speech is fallback only.${customLabel}`;
     return;
   }
   if (state.voiceMode === "openai") {
@@ -3897,6 +3912,7 @@ function qualityLabel(score) {
 
 function averageVoiceQuality() {
   if (state.voiceMode === "openvoice") return 94;
+  if (state.voiceMode === "elevenlabs") return 99;
   if (state.voiceMode === "openai") return state.audioQuality === "wav" ? 99 : 96;
   const values = Object.values(state.cast).map((character) => scoreVoice(findVoice(character.voiceURI)));
   if (!values.length) return 0;
@@ -3920,6 +3936,8 @@ function speakQueue(lines) {
   }
   if (state.voiceMode === "openvoice") {
     setStatus("Open Voice HD is selected. Connect a local Piper/OpenVoice service for final render; using browser preview now.");
+  } else if (state.voiceMode === "elevenlabs") {
+    setStatus("ElevenLabs needs an API key. Paste one in Voice Studio to avoid browser/Microsoft voices.");
   } else if (state.voiceMode === "openai") {
     setStatus("OpenAI HD needs a session API key. Paste one in Voice Studio to avoid browser/Microsoft voices.");
   }
@@ -3999,6 +4017,8 @@ function speakText(text, castId) {
   }
   if (state.voiceMode === "openvoice") {
     setStatus("Open Voice HD is selected. Connect a local Piper/OpenVoice service for final render; using browser preview now.");
+  } else if (state.voiceMode === "elevenlabs") {
+    setStatus("ElevenLabs needs an API key. Paste one in Voice Studio to avoid browser/Microsoft voices.");
   } else if (state.voiceMode === "openai") {
     setStatus("OpenAI HD needs a session API key. Paste one in Voice Studio to avoid browser/Microsoft voices.");
   }
@@ -4040,6 +4060,9 @@ async function speakHdText(text, castId) {
 
 async function createHdSpeech(text, cast) {
   const apiKey = els.ttsApiKey.value.trim();
+  if (state.voiceMode === "elevenlabs") {
+    return createElevenLabsSpeech(text, cast, apiKey);
+  }
   if (cast.cloudVoice === "custom") {
     throw new Error("Custom voice samples need a voice-cloning backend before HD rendering.");
   }
@@ -4061,6 +4084,43 @@ async function createHdSpeech(text, cast) {
     throw new Error(`OpenAI speech request failed: ${response.status}`);
   }
   return URL.createObjectURL(await response.blob());
+}
+
+async function createElevenLabsSpeech(text, cast, apiKey) {
+  const voiceId = elevenLabsVoiceId(cast);
+  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
+    method: "POST",
+    headers: {
+      "xi-api-key": apiKey,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      text: text.slice(0, 4800),
+      model_id: "eleven_multilingual_v2",
+      voice_settings: {
+        stability: 0.42,
+        similarity_boost: 0.82,
+        style: 0.28,
+        use_speaker_boost: true
+      }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`ElevenLabs speech request failed: ${response.status}`);
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
+function elevenLabsVoiceId(cast) {
+  if (cast.cloudVoice === "custom") {
+    throw new Error("Custom voice samples need a voice-cloning backend before HD rendering.");
+  }
+  const role = `${cast.name || ""} ${cast.role || ""}`.toLowerCase();
+  if (role.includes("narrator")) return elevenLabsVoices.narrator;
+  if (role.includes("mara") || role.includes("lead")) return elevenLabsVoices.lead;
+  if (role.includes("captain") || role.includes("rook") || role.includes("protector")) return elevenLabsVoices.protector;
+  if (role.includes("archivist") || role.includes("mysterious")) return elevenLabsVoices.mysterious;
+  return elevenLabsVoices.default;
 }
 
 function hdInstructions(cast) {
@@ -4141,7 +4201,7 @@ function cleanupAudioContext() {
 }
 
 function shouldUseHdTts() {
-  return state.voiceMode === "openai" && Boolean(els.ttsApiKey.value.trim());
+  return ["elevenlabs", "openai"].includes(state.voiceMode) && Boolean(els.ttsApiKey.value.trim());
 }
 
 function applyCastVoice(utterance, cast) {
@@ -4671,9 +4731,9 @@ function loadState() {
       merged.profile.handle = defaultState.profile.handle;
       merged.profile.bio = defaultState.profile.bio;
     }
-    if ((saved.voiceUpgradeVersion || 0) < 4) {
-      merged.voiceMode = "openai";
-      merged.voiceUpgradeVersion = 4;
+    if ((saved.voiceUpgradeVersion || 0) < 5) {
+      merged.voiceMode = "elevenlabs";
+      merged.voiceUpgradeVersion = 5;
     }
     if ((saved.planModelVersion || 0) < 1) {
       merged.targetLanguage = "English";
