@@ -2854,15 +2854,16 @@ function stopLiveAudiobookPlayback(resetProgress = false) {
 
 function startLiveAudioTimer() {
   stopLiveAudioTimer();
+  const tickSeconds = 0.25;
   liveAudioTimer = window.setInterval(() => {
-    liveAudioProgressSeconds = Math.min(liveTrackDurationSeconds(), liveAudioProgressSeconds + livePlaybackRate);
+    liveAudioProgressSeconds = Math.min(liveTrackDurationSeconds(), liveAudioProgressSeconds + (livePlaybackRate * tickSeconds));
     updateLiveAudioProgressUi();
     if (liveAudioProgressSeconds >= liveTrackDurationSeconds()) {
       stopLiveAudiobookPlayback(false);
       setStatus("Live audiobook chapter complete");
       updateLiveAudioProgressUi();
     }
-  }, 1000);
+  }, tickSeconds * 1000);
 }
 
 function stopLiveAudioTimer() {
@@ -3110,12 +3111,20 @@ function livePageHtml(livePage) {
     .map((paragraph) => {
       const sentences = paragraph.sentences.map((sentence) => {
         if (sentence.active) {
-          return `<mark class="live-current-sentence">${escapeHtml(sentence.text)}</mark>`;
+          return `<mark class="live-current-sentence">${liveSentenceHtml(sentence)}</mark>`;
         }
         return escapeHtml(sentence.text);
       }).join(" ");
       return `<p>${sentences}</p>`;
     }).join("");
+}
+
+function liveSentenceHtml(sentence) {
+  const words = sentence.words?.length ? sentence.words : wordsFromText(sentence.text);
+  return words.map((word, index) => {
+    const className = index === sentence.activeWordOffset ? " class=\"live-current-word\"" : "";
+    return `<span${className}>${escapeHtml(word)}</span>`;
+  }).join(" ");
 }
 
 function paragraphChunksForWords(words, activeWordIndex) {
@@ -3129,6 +3138,7 @@ function paragraphChunksForWords(words, activeWordIndex) {
     if (closesSentence || index === words.length - 1) {
       currentParagraph.push({
         text: currentSentence.join(" "),
+        words: currentSentence.slice(),
         start: sentenceStart,
         end: index
       });
@@ -3139,7 +3149,9 @@ function paragraphChunksForWords(words, activeWordIndex) {
       paragraphs.push({
         sentences: currentParagraph.map((sentence) => ({
           text: sentence.text,
-          active: activeWordIndex >= sentence.start && activeWordIndex <= sentence.end
+          words: sentence.words,
+          active: activeWordIndex >= sentence.start && activeWordIndex <= sentence.end,
+          activeWordOffset: clamp(activeWordIndex - sentence.start, 0, Math.max(0, sentence.words.length - 1))
         }))
       });
       currentParagraph = [];
